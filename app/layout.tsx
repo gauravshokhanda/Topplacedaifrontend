@@ -1,0 +1,33 @@
+import './globals.css';
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  display: 'swap'
+});
+
+export const metadata: Metadata = {
+  title: 'SkillMentor AI | AI-Powered Career Development Platform',
+  description: 'Master your career with AI-powered mock interviews, personalized feedback, and expert mentorship. Connect with top mentors and accelerate your professional growth.',
+  keywords: 'AI interviews, career development, mentorship, skill assessment, professional growth',
+  authors: [{ name: 'SkillMentor AI Team' }],
+  viewport: 'width=device-width, initial-scale=1',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-black text-white antialiased`}>
+        <div className="min-h-screen">
+          {children}
+        </div>
+      </body>
+    </html>
+  );
+}
