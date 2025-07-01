@@ -33,7 +33,7 @@ export default function Sidebar({ userType }: SidebarProps) {
 
   const learnerMenuItems = [
     { icon: Home, label: 'Dashboard', href: '/learner' },
-    { icon: Play, label: 'AI Interview', href: '/learner/interview' },
+    { icon: Play, label: 'AI Interview', href: '/learner/Interview' },
     { icon: Trophy, label: 'Scorecard', href: '/learner/scorecard' },
     { icon: Users, label: 'Find Mentors', href: '/learner/mentors' },
     { icon: Calendar, label: 'Sessions', href: '/learner/sessions' },

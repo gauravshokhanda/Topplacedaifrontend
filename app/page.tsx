@@ -93,7 +93,7 @@ export default function HomePage() {
               <p className="text-gray-400">
                 Practice with our advanced AI that adapts to your responses and provides real-time feedback on your interview performance.
               </p>
-            </div>
+            </div>  
             
             <div className="glass-card p-8 card-hover">
               <div className="w-12 h-12 bg-[#00FFB2]/20 rounded-lg flex items-center justify-center mb-6">
@@ -208,14 +208,14 @@ export default function HomePage() {
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><Link href="/privacy" className="hover:text-[#00FFB2] transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/privacy" className="hover:text-[#00FFB2] transi]0jd]tion-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms" className="hover:text-[#00FFB2] transition-colors">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
           
           <div className="border-t border-[#00FFB2]/20 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 SkillMentor AI. All rights reserved.</p>
+            <p>&copy; 2025 SkillMentor AI. All rights reserved.</p>
           </div>
         </div>
       </footer>
