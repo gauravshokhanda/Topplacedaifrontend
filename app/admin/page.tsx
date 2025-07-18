@@ -62,7 +62,7 @@ export default function AdminDashboard() {
                 <h1 className="text-3xl md:text-4xl font-bold mb-2">
                   Admin <span className="gradient-text">Dashboard</span> 
                 </h1>
-                <p className="text-gray-400 text-lg">Manage and monitor the SkillMentor AI platform</p>
+                <p className="text-gray-400 text-lg">Manage and monitor the Top placed AIplatform</p>
               </div>
               <div className="flex items-center space-x-4">
                 <Link href="/admin/settings" className="btn-outline flex items-center">

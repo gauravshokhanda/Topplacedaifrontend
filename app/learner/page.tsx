@@ -1,4 +1,5 @@
 'use client';
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -63,6 +64,7 @@ export default function LearnerDashboard() {
   ];
 
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-black">
       <Navbar />
       <Sidebar userType="learner" />
@@ -372,5 +374,6 @@ export default function LearnerDashboard() {
         </div>
       </div>
     </div>
+    </ProtectedRoute>
   );
 }

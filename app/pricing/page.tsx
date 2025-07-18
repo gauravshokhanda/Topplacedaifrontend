@@ -306,7 +306,7 @@ export default function PricingPage() {
               Ready to Accelerate Your Career?
             </h2>
             <p className="text-xl text-gray-300 mb-8">
-              Join thousands of professionals who are already growing with SkillMentor AI
+              Join thousands of professionals who are already growing with Top placed
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/auth/register" className="btn-primary flex items-center justify-center px-8 py-4 text-lg">

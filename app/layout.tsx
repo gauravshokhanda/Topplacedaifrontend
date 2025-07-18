@@ -1,19 +1,22 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import "./globals.css";
+import { ReduxProvider } from "@/store/provider";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  display: 'swap'
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: 'SkillMentor AI | AI-Powered Career Development Platform',
-  description: 'Master your career with AI-powered mock interviews, personalized feedback, and expert mentorship. Connect with top mentors and accelerate your professional growth.',
-  keywords: 'AI interviews, career development, mentorship, skill assessment, professional growth',
-  authors: [{ name: 'SkillMentor AI Team' }],
-  viewport: 'width=device-width, initial-scale=1',
+  title: "Top placed AI | AI-Powered Career Development Platform",
+  description:
+    "Master your career with AI-powered mock interviews, personalized feedback, and expert mentorship. Connect with top mentors and accelerate your professional growth.",
+  keywords:
+    "AI interviews, career development, mentorship, skill assessment, professional growth",
+  authors: [{ name: "Top placed  Team" }],
+  viewport: "width=device-width, initial-scale=1",
 };
 
 export default function RootLayout({
@@ -25,7 +28,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.className} bg-black text-white antialiased`}>
         <div className="min-h-screen">
-          {children}
+          <ReduxProvider>{children}</ReduxProvider>
         </div>
       </body>
     </html>

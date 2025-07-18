@@ -130,7 +130,7 @@ export default function SettingsPage() {
               </Link>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold gradient-text">Settings ⚙️</h1>
-            <p className="text-gray-400 text-lg">Customize your SkillMentor AI experience</p>
+            <p className="text-gray-400 text-lg">Customize your Top placed AIexperience</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

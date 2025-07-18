@@ -3,28 +3,89 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Linkedin, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { loginSuccess } from '@/store/slices/authSlice';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+
+
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const dispatch = useDispatch();
+  const auth = useSelector((state: RootState) => state.auth);
+const router = useRouter();
+
+useEffect(() => {
+  if (auth.token && auth.user) {
+    const role = auth.user.role;
+    if (role === 'mentor') {
+      router.replace('/mentor');
+    } else if (role === 'user') {
+      router.replace('/learner');
+    }
+  }
+}, [auth.token, auth.user, router]);
+
 
   const handleLinkedInLogin = () => {
     setIsLoading(true);
-    // Simulate LinkedIn OAuth flow
     setTimeout(() => {
       window.location.href = '/learner';
     }, 2000);
   };
 
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    setMessage('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('http://localhost:4000/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+      if (data.success) {
+        localStorage.setItem('token', data.token);
+        dispatch(loginSuccess({ token: data.token, user: data.user }));
+        setMessage('Login successful! Redirecting...');
+        
+      }
+
+        // Redirect based on role
+        if (data.user.role === 'mentor') {
+           router.push('/mentor');
+        } else {
+          router.push('/learner');
+        }
+      } else {
+        setMessage(data.message || 'Invalid credentials.');
+      }
+    } catch (err) {
+      setMessage('Server error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-4">
-      {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#00FFB2]/10 rounded-full blur-3xl animate-pulse-slow"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#00CC8E]/5 rounded-full blur-3xl animate-pulse-slow"></div>
       </div>
 
-      {/* Back to Home */}
       <Link 
         href="/" 
         className="absolute top-6 left-6 flex items-center text-gray-400 hover:text-[#00FFB2] transition-colors"
@@ -33,10 +94,8 @@ export default function LoginPage() {
         Back to Home
       </Link>
 
-      {/* Login Card */}
       <div className="relative z-10 w-full max-w-md">
         <div className="glass-card p-8 neon-glow">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-r from-[#00FFB2] to-[#00CC8E] rounded-xl flex items-center justify-center mx-auto mb-4">
               <span className="text-black font-bold text-xl">SM</span>
@@ -45,7 +104,6 @@ export default function LoginPage() {
             <p className="text-gray-400">Sign in to continue your career journey</p>
           </div>
 
-          {/* LinkedIn Login */}
           <button
             onClick={handleLinkedInLogin}
             disabled={isLoading}
@@ -61,7 +119,6 @@ export default function LoginPage() {
             )}
           </button>
 
-          {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-600"></div>
@@ -71,8 +128,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Email Login Form */}
-          <form className="space-y-4">
+          {/* Login Form */}
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                 Email Address
@@ -82,8 +139,11 @@ export default function LoginPage() {
                 <input
                   type="email"
                   id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-[#1A1A1A] border border-gray-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFB2] focus:border-transparent"
                   placeholder="Enter your email"
+                  required
                 />
               </div>
             </div>
@@ -96,8 +156,11 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#1A1A1A] border border-gray-600 rounded-lg py-3 px-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00FFB2] focus:border-transparent"
                   placeholder="Enter your password"
+                  required
                 />
                 <button
                   type="button"
@@ -122,12 +185,14 @@ export default function LoginPage() {
             <button
               type="submit"
               className="w-full btn-primary py-3 font-semibold"
+              disabled={isLoading}
             >
-              Sign In
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
+
+            {message && <p className="text-sm text-center mt-2 text-red-400">{message}</p>}
           </form>
 
-          {/* Sign Up Link */}
           <div className="text-center mt-6">
             <p className="text-gray-400">
               Don't have an account?{' '}
@@ -137,7 +202,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Role Selection */}
           <div className="mt-8 pt-6 border-t border-gray-600">
             <p className="text-center text-sm text-gray-400 mb-4">Quick Access</p>
             <div className="grid grid-cols-2 gap-3">
@@ -157,7 +221,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Trust Indicators */}
         <div className="text-center mt-6 text-gray-500 text-sm">
           <p>Trusted by 10,000+ professionals worldwide</p>
         </div>
