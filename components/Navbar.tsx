@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu, X, User, LogOut, Settings } from "lucide-react";
 import { useSelector,useDispatch } from "react-redux";
-import { RootState } from "@/store";
+import { RootState } from "../store/store"; // Adjust the import path as necessary
 import { logout } from '@/store/slices/authSlice';
 
 export default function Navbar() {

@@ -19,7 +19,8 @@ import {
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import { useSelector,useDispatch } from "react-redux";
-import { RootState } from "@/store";
+import { RootState } from "../../store/store";
+
 
 export default function MentorDashboard() {
   const [isVisible, setIsVisible] = useState(false);

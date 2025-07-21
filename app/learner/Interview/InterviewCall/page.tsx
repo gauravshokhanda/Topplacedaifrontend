@@ -104,32 +104,33 @@ export default function InterviewCall() {
 
       setVideoTracks([]);
     } else {
-      async function restartCamera() {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-          });
-          const newVideoTracks = stream.getVideoTracks();
-          setVideoTracks(newVideoTracks);
-
-          const combinedStream = new MediaStream([
-            ...(mediaStream?.getAudioTracks() || []),
-            ...newVideoTracks,
-          ]);
-
-          if (videoRef.current && !isScreenSharing) {
-            videoRef.current.srcObject = combinedStream;
-          }
-
-          setMediaStream(combinedStream);
-        } catch (err) {
-          console.error("Failed to restart camera:", err);
-        }
-      }
+      restartCamera();
 
       restartCamera();
     }
   }, [isCameraOn]);
+  async function restartCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+      });
+      const newVideoTracks = stream.getVideoTracks();
+      setVideoTracks(newVideoTracks);
+
+      const combinedStream = new MediaStream([
+        ...(mediaStream?.getAudioTracks() || []),
+        ...newVideoTracks,
+      ]);
+
+      if (videoRef.current && !isScreenSharing) {
+        videoRef.current.srcObject = combinedStream;
+      }
+
+      setMediaStream(combinedStream);
+    } catch (err) {
+      console.error("Failed to restart camera:", err);
+    }
+  }
 
   const toggleMic = () => setIsMicOn((prev) => !prev);
   const toggleCamera = () => setIsCameraOn((prev) => !prev);
