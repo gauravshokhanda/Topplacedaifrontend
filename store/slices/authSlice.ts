@@ -4,12 +4,19 @@ const initialState = {
   token: "",
   user: null as null | {
     id: string;
-    email: string;
-    role: string;
     name?: string;
+    email: string;
+    role: "user" | "mentor";
+    phone?: string;
     experience?: string;
+    resume_url?: string;
+    profile_image?: string;
+    goals?: string;
+    tech_stack?: string;
+    profile_completion?: number;
   },
 };
+
 
 const authSlice = createSlice({
   name: "auth",

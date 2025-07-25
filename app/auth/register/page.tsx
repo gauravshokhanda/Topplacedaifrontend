@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { loginSuccess } from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
 import { RootState } from "@/store/store";
+import { toast } from "sonner";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -38,6 +39,48 @@ export default function RegisterPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // const handleSubmit = async (e: any) => {
+  //   e.preventDefault();
+  //   setMessage("");
+  //   setLoading(true);
+
+  //   if (form.password !== form.confirmPassword) {
+  //     setMessage("Passwords don't match.");
+  //     setLoading(false);
+  //     return;
+  //   }
+
+  //   try {
+  //     const res = await fetch("http://localhost:4000/auth/register", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         email: form.email,
+  //         password: form.password,
+  //         role: form.role,
+  //         name:  form.name,
+  //         experience: form.role === "mentor" ? form.experience : undefined,
+  //       }),
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (data.success && data.token && data.user) {
+  //       // ✅ Save to Redux
+  //       dispatch(loginSuccess({ token: data.token, user: data.user }));
+  //       // ✅ Redirect
+  //       if (data.user.role === "mentor") router.push("/mentor");
+  //       else router.push("/learner");
+  //     } else {
+  //       setMessage(data.message || "Something went wrong.");
+  //     }
+  //   } catch (err) {
+  //     setMessage("Server error.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setMessage("");
@@ -45,36 +88,50 @@ export default function RegisterPage() {
 
     if (form.password !== form.confirmPassword) {
       setMessage("Passwords don't match.");
+      toast.error("Passwords don't match.");
       setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:4000/auth/register", {
+      const res = await fetch("http://localhost:5000/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: form.name,
           email: form.email,
           password: form.password,
           role: form.role,
-          name:  form.name,
           experience: form.role === "mentor" ? form.experience : undefined,
         }),
       });
 
       const data = await res.json();
 
-      if (data.success && data.token && data.user) {
-        // ✅ Save to Redux
-        dispatch(loginSuccess({ token: data.token, user: data.user }));
+      if (res.ok && data.access_token && data.user) {
+        const token = data.access_token;
+        const user = data.user;
+
+        // ✅ Same Redux + localStorage logic as LoginPage
+        localStorage.setItem("token", token);
+        dispatch(loginSuccess({ token, user }));
+
+        setMessage("Account created successfully! Redirecting...");
+        toast.success("Account created successfully! Redirecting...");
+
         // ✅ Redirect
-        if (data.user.role === "mentor") router.push("/mentor");
-        else router.push("/learner");
+        if (user.role === "mentor") {
+          router.push("/mentor");
+        } else {
+          router.push("/learner");
+        }
       } else {
         setMessage(data.message || "Something went wrong.");
+        toast.error(data.message || "Registration failed.");
       }
-    } catch (err) {
+    } catch (error) {
       setMessage("Server error.");
+      toast.error("Server error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -98,7 +155,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
-              <div>
+            <div>
               <label className="text-gray-300 text-sm">Full Name</label>
               <div className="relative">
                 <User
@@ -182,11 +239,10 @@ export default function RegisterPage() {
                 value={form.role}
                 onChange={handleChange}
               >
-                <option value="user">User</option>
+                <option value="user">Interviewer </option>
                 <option value="mentor">Mentor</option>
               </select>
             </div>
-          
 
             {/* Mentor Fields */}
             {form.role === "mentor" && (

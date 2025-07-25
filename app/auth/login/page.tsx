@@ -1,79 +1,122 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Linkedin, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { useDispatch } from 'react-redux';
-import { loginSuccess } from '@/store/slices/authSlice';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
-
-
+import { useState } from "react";
+import Link from "next/link";
+import { Linkedin, Mail, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { loginSuccess } from "@/store/slices/authSlice";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { toast } from "sonner";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const dispatch = useDispatch();
   const auth = useSelector((state: RootState) => state.auth);
-const router = useRouter();
+  const router = useRouter();
 
-useEffect(() => {
-  if (auth.token && auth.user) {
-    const role = auth.user.role;
-    if (role === 'mentor') {
-      router.replace('/mentor');
-    } else if (role === 'user') {
-      router.replace('/learner');
+  useEffect(() => {
+    if (auth.token && auth.user) {
+      const role = auth.user.role;
+      if (role === "mentor") {
+        router.replace("/mentor");
+      } else if (role === "user") {
+        router.replace("/learner");
+      }
     }
-  }
-}, [auth.token, auth.user, router]);
-
+  }, [auth.token, auth.user, router]);
 
   const handleLinkedInLogin = () => {
     setIsLoading(true);
     setTimeout(() => {
-      window.location.href = '/learner';
+      window.location.href = "/learner";
     }, 2000);
   };
 
+  // const handleSubmit = async (e: any) => {
+  //   e.preventDefault();
+  //   setMessage('');
+  //   setIsLoading(true);
+
+  //   try {
+  //     const res = await fetch('http://localhost:4000/auth/login', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ email, password }),
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (data.success) {
+  //     if (data.success) {
+  //       localStorage.setItem('token', data.token);
+  //       dispatch(loginSuccess({ token: data.token, user: data.user }));
+  //       setMessage('Login successful! Redirecting...');
+
+  //     }
+
+  //       // Redirect based on role
+  //       if (data.user.role === 'mentor') {
+  //          router.push('/mentor');
+  //       } else {
+  //         router.push('/learner');
+  //       }
+  //     } else {
+  //       setMessage(data.message || 'Invalid credentials.');
+  //     }
+  //   } catch (err) {
+  //     setMessage('Server error. Please try again.');
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    setMessage('');
+    setMessage("");
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://localhost:4000/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("http://localhost:5000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
-      if (data.success) {
-      if (data.success) {
-        localStorage.setItem('token', data.token);
-        dispatch(loginSuccess({ token: data.token, user: data.user }));
-        setMessage('Login successful! Redirecting...');
-        
-      }
+      if (res.ok && data.access_token && data.user) {
+        const token = data.access_token;
+        const user = data.user;
 
-        // Redirect based on role
-        if (data.user.role === 'mentor') {
-           router.push('/mentor');
+        // ✅ Same as RegisterPage logic
+        localStorage.setItem("token", token);
+        dispatch(loginSuccess({ token, user }));
+
+        setMessage("Login successful! Redirecting...");
+        toast.success("Login successful!");
+
+        // ✅ Redirect based on role
+        if (user.role === "mentor") {
+          router.push("/mentor");
         } else {
-          router.push('/learner');
+          router.push("/learner");
         }
       } else {
-        setMessage(data.message || 'Invalid credentials.');
+        setMessage(data.message || "Invalid credentials.");
+        toast.error("Invalid email or password.");
       }
     } catch (err) {
-      setMessage('Server error. Please try again.');
+      setMessage("Server error. Please try again.");
+      toast("Something happened.");
     } finally {
       setIsLoading(false);
     }
@@ -86,8 +129,8 @@ useEffect(() => {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#00CC8E]/5 rounded-full blur-3xl animate-pulse-slow"></div>
       </div>
 
-      <Link 
-        href="/" 
+      <Link
+        href="/"
         className="absolute top-6 left-6 flex items-center text-gray-400 hover:text-[#00FFB2] transition-colors"
       >
         <ArrowLeft size={20} className="mr-2" />
@@ -98,10 +141,12 @@ useEffect(() => {
         <div className="glass-card p-8 neon-glow">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-r from-[#00FFB2] to-[#00CC8E] rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-black font-bold text-xl">SM</span>
+              <span className="text-black font-bold text-xl">TP</span>
             </div>
             <h1 className="text-2xl font-bold mb-2">Welcome Back</h1>
-            <p className="text-gray-400">Sign in to continue your career journey</p>
+            <p className="text-gray-400">
+              Sign in to continue your career journey
+            </p>
           </div>
 
           <button
@@ -124,18 +169,26 @@ useEffect(() => {
               <div className="w-full border-t border-gray-600"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-black text-gray-400">Or continue with email</span>
+              <span className="px-4 bg-black text-gray-400">
+                Or continue with email
+              </span>
             </div>
           </div>
 
           {/* Login Form */}
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Email Address
               </label>
               <div className="relative">
-                <Mail size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Mail
+                  size={20}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                />
                 <input
                   type="email"
                   id="email"
@@ -149,12 +202,15 @@ useEffect(() => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -174,10 +230,16 @@ useEffect(() => {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center">
-                <input type="checkbox" className="w-4 h-4 text-[#00FFB2] bg-[#1A1A1A] border-gray-600 rounded focus:ring-[#00FFB2]" />
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 text-[#00FFB2] bg-[#1A1A1A] border-gray-600 rounded focus:ring-[#00FFB2]"
+                />
                 <span className="ml-2 text-sm text-gray-400">Remember me</span>
               </label>
-              <Link href="/auth/forgot-password" className="text-sm text-[#00FFB2] hover:underline">
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-[#00FFB2] hover:underline"
+              >
                 Forgot password?
               </Link>
             </div>
@@ -187,42 +249,49 @@ useEffect(() => {
               className="w-full btn-primary py-3 font-semibold"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
 
-            {message && <p className="text-sm text-center mt-2 text-red-400">{message}</p>}
+            {message && (
+              <p className="text-sm text-center mt-2 text-red-400">{message}</p>
+            )}
           </form>
 
           <div className="text-center mt-6">
             <p className="text-gray-400">
-              Don't have an account?{' '}
-              <Link href="/auth/register" className="text-[#00FFB2] hover:underline font-medium">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/auth/register"
+                className="text-[#00FFB2] hover:underline font-medium"
+              >
                 Sign up
               </Link>
             </p>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-600">
-            <p className="text-center text-sm text-gray-400 mb-4">Quick Access</p>
+          {/* <div className="mt-8 pt-6 border-t border-gray-600">
+            <p className="text-center text-sm text-gray-400 mb-4">
+              Quick Access
+            </p>
             <div className="grid grid-cols-2 gap-3">
-              <Link 
-                href="/learner" 
+              <Link
+                href="/learner"
                 className="text-center py-2 px-3 bg-[#1A1A1A] border border-gray-600 rounded-lg hover:border-[#00FFB2] transition-colors text-sm"
               >
                 I'm a Learner
               </Link>
-              <Link 
-                href="/mentor" 
+              <Link
+                href="/mentor"
                 className="text-center py-2 px-3 bg-[#1A1A1A] border border-gray-600 rounded-lg hover:border-[#00FFB2] transition-colors text-sm"
               >
                 I'm a Mentor
               </Link>
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="text-center mt-6 text-gray-500 text-sm">
-          <p>Trusted by 10,000+ professionals worldwide</p>
+          <p>Trusted by 1000+ professionals worldwide</p>
         </div>
       </div>
     </div>
