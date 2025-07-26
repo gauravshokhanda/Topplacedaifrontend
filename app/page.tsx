@@ -18,6 +18,8 @@ import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { RootState } from "@/store/store";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function HomePage() {
   const [isVisible, setIsVisible] = useState(false);
   const auth = useSelector((state: RootState) => state.auth);

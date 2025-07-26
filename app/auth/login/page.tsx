@@ -11,6 +11,8 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { toast } from "sonner";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,51 +41,13 @@ export default function LoginPage() {
     }, 2000);
   };
 
-  // const handleSubmit = async (e: any) => {
-  //   e.preventDefault();
-  //   setMessage('');
-  //   setIsLoading(true);
-
-  //   try {
-  //     const res = await fetch('http://localhost:4000/auth/login', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ email, password }),
-  //     });
-
-  //     const data = await res.json();
-
-  //     if (data.success) {
-  //     if (data.success) {
-  //       localStorage.setItem('token', data.token);
-  //       dispatch(loginSuccess({ token: data.token, user: data.user }));
-  //       setMessage('Login successful! Redirecting...');
-
-  //     }
-
-  //       // Redirect based on role
-  //       if (data.user.role === 'mentor') {
-  //          router.push('/mentor');
-  //       } else {
-  //         router.push('/learner');
-  //       }
-  //     } else {
-  //       setMessage(data.message || 'Invalid credentials.');
-  //     }
-  //   } catch (err) {
-  //     setMessage('Server error. Please try again.');
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/auth/login", {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -268,26 +232,6 @@ export default function LoginPage() {
               </Link>
             </p>
           </div>
-
-          {/* <div className="mt-8 pt-6 border-t border-gray-600">
-            <p className="text-center text-sm text-gray-400 mb-4">
-              Quick Access
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <Link
-                href="/learner"
-                className="text-center py-2 px-3 bg-[#1A1A1A] border border-gray-600 rounded-lg hover:border-[#00FFB2] transition-colors text-sm"
-              >
-                I'm a Learner
-              </Link>
-              <Link
-                href="/mentor"
-                className="text-center py-2 px-3 bg-[#1A1A1A] border border-gray-600 rounded-lg hover:border-[#00FFB2] transition-colors text-sm"
-              >
-                I'm a Mentor
-              </Link>
-            </div>
-          </div> */}
         </div>
 
         <div className="text-center mt-6 text-gray-500 text-sm">

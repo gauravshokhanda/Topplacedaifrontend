@@ -14,6 +14,7 @@ const initialState = {
     goals?: string;
     tech_stack?: string;
     profile_completion?: number;
+    linkedin_profile?: string;
   },
 };
 
