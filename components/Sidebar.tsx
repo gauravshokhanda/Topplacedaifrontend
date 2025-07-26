@@ -55,7 +55,7 @@ export default function Sidebar({ userType }: SidebarProps) {
       icon: Trophy,
       label: "Scorecard",
       href: "/learner/scorecard",
-      locked: true,
+      locked: false,
     },
     {
       icon: Users,
@@ -79,7 +79,7 @@ export default function Sidebar({ userType }: SidebarProps) {
       icon: Award,
       label: "Achievements",
       href: "/learner/achievements",
-      locked: true,
+      locked: false,
     },
     { icon: User, label: "Profile", href: "/learner/profile", locked: false },
     { icon: Settings, label: "Settings", href: "/settings", locked: false },
