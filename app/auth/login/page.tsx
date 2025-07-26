@@ -83,7 +83,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/auth/login", {
+      const res = await fetch("https://81fc5b1a947f.ngrok-free.app/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
