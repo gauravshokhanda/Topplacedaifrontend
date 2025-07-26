@@ -7,9 +7,26 @@ import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import Image from "next/image";
-import { Pencil, Mail, Phone, Briefcase, Star, Upload, FileText, ExternalLink, Linkedin, Target } from "lucide-react";
+import {
+  Pencil,
+  Mail,
+  Phone,
+  Briefcase,
+  Star,
+  Upload,
+  FileText,
+  ExternalLink,
+  Linkedin,
+  Target,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -34,25 +51,26 @@ export default function LearnerProfilePage() {
     url: string;
     uploadDate: string;
   } | null>(
-    user?.resume_url ? {
-      name: "Resume.pdf",
-      url: user.resume_url,
-      uploadDate: new Date().toLocaleDateString()
-    } : null
+    user?.resume_url
+      ? {
+          name: "Resume.pdf",
+          url: user.resume_url,
+          uploadDate: new Date().toLocaleDateString(),
+        }
+      : null
   );
-
   useEffect(() => {
     setIsVisible(true);
     // Function to extract query parameters from URL
     const getQueryParams = () => {
       const params = new URLSearchParams(window.location.search);
-      const name = params.get('name') || '';
-      const phone = params.get('phone') || '';
-      const experience = params.get('experience') || '';
-      const goals = params.get('goals') || '';
-      const linkedinProfile = params.get('linkedinProfile') || '';
+      const name = params.get("name") || "";
+      const phone = params.get("phone") || "";
+      const experience = params.get("experience") || "";
+      const goals = params.get("goals") || "";
+      const linkedinProfile = params.get("linkedinProfile") || "";
 
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         name: name,
         phone: phone,
@@ -76,14 +94,14 @@ export default function LearnerProfilePage() {
   const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setFormData((prev) => ({ ...prev, resumeFile: file }));
-    
+
     if (file) {
       // Create preview for uploaded file
       const fileUrl = URL.createObjectURL(file);
       setUploadedResume({
         name: file.name,
         url: fileUrl,
-        uploadDate: new Date().toLocaleDateString()
+        uploadDate: new Date().toLocaleDateString(),
       });
     }
   };
@@ -117,7 +135,6 @@ export default function LearnerProfilePage() {
     setUploadedResume(null);
     setFormData((prev) => ({ ...prev, resumeFile: null }));
   };
-
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-black">
@@ -147,7 +164,10 @@ export default function LearnerProfilePage() {
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                   <div className="relative">
                     <Image
-                      src={user?.profile_image || "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"}
+                      src={
+                        user?.profile_image ||
+                        "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
+                      }
                       alt="Profile"
                       width={120}
                       height={120}
@@ -165,7 +185,7 @@ export default function LearnerProfilePage() {
                       </label>
                     )}
                   </div>
-                  
+
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center justify-between">
                       <h2 className="text-2xl font-semibold">
@@ -188,13 +208,19 @@ export default function LearnerProfilePage() {
                           <label className="block text-sm font-medium text-gray-300 mb-2">
                             Experience Level
                           </label>
-                          <Select onValueChange={(value) => setIsFresher(value === "fresher")}>
+                          <Select
+                            onValueChange={(value) =>
+                              setIsFresher(value === "fresher")
+                            }
+                          >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select experience level" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="fresher">Fresher</SelectItem>
-                              <SelectItem value="experienced">Experienced</SelectItem>
+                              <SelectItem value="experienced">
+                                Experienced
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -267,10 +293,16 @@ export default function LearnerProfilePage() {
                             />
                           </div>
                           <div className="md:col-span-2 flex gap-3 pt-4">
-                            <button onClick={handleSave} className="btn-primary px-6 py-2">
+                            <button
+                              onClick={handleSave}
+                              className="btn-primary px-6 py-2"
+                            >
                               Save Changes
                             </button>
-                            <button onClick={handleCancel} className="btn-outline px-6 py-2">
+                            <button
+                              onClick={handleCancel}
+                              className="btn-outline px-6 py-2"
+                            >
                               Cancel
                             </button>
                           </div>
@@ -289,14 +321,16 @@ export default function LearnerProfilePage() {
                           </div>
                           <div className="flex items-center text-gray-300 gap-3">
                             <Briefcase size={18} className="text-[#00FFB2]" />
-                            <span>{user?.experience || "No experience added"}</span>
+                            <span>
+                              {user?.experience || "No experience added"}
+                            </span>
                           </div>
                           {user?.linkedin_profile && (
                             <div className="flex items-center text-gray-300 gap-3">
                               <Linkedin size={18} className="text-[#00FFB2]" />
-                              <a 
-                                href={user.linkedin_profile} 
-                                target="_blank" 
+                              <a
+                                href={user.linkedin_profile}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[#00FFB2] hover:underline flex items-center gap-1"
                               >
@@ -331,7 +365,7 @@ export default function LearnerProfilePage() {
                     </label>
                   )}
                 </div>
-                
+
                 {uploadedResume ? (
                   <div className="bg-[#1A1A11A] rounded-lg p-4 border border-gray-600">
                     <div className="flex items-center justify-between">
@@ -340,7 +374,9 @@ export default function LearnerProfilePage() {
                           <FileText size={24} className="text-red-400" />
                         </div>
                         <div>
-                          <div className="font-medium text-white">{uploadedResume.name}</div>
+                          <div className="font-medium text-white">
+                            {uploadedResume.name}
+                          </div>
                           <div className="text-sm text-gray-400">
                             Uploaded on {uploadedResume.uploadDate}
                           </div>
@@ -367,7 +403,10 @@ export default function LearnerProfilePage() {
                   </div>
                 ) : (
                   <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
-                    <FileText size={48} className="text-gray-500 mx-auto mb-4" />
+                    <FileText
+                      size={48}
+                      className="text-gray-500 mx-auto mb-4"
+                    />
                     <p className="text-gray-400 mb-4">No resume uploaded yet</p>
                     <label className="btn-primary cursor-pointer inline-flex items-center gap-2">
                       <Upload size={16} />
@@ -396,12 +435,19 @@ export default function LearnerProfilePage() {
                   </h3>
                   {user?.goals ? (
                     <div className="bg-[#1A1A1A] rounded-lg p-4 border border-gray-600">
-                      <p className="text-gray-300 leading-relaxed">{user.goals}</p>
+                      <p className="text-gray-300 leading-relaxed">
+                        {user.goals}
+                      </p>
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <Target size={48} className="text-gray-500 mx-auto mb-4" />
-                      <p className="text-gray-400 mb-4">No career goals set yet</p>
+                      <Target
+                        size={48}
+                        className="text-gray-500 mx-auto mb-4"
+                      />
+                      <p className="text-gray-400 mb-4">
+                        No career goals set yet
+                      </p>
                       <button
                         onClick={() => setIsEditing(true)}
                         className="btn-outline"
