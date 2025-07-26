@@ -94,7 +94,7 @@ export default function RegisterPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/auth/register", {
+      const res = await fetch("https://81fc5b1a947f.ngrok-free.app/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
