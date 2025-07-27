@@ -18,6 +18,8 @@ import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { RootState } from "@/store/store";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function HomePage() {
   const [isVisible, setIsVisible] = useState(false);
   const auth = useSelector((state: RootState) => state.auth);
@@ -243,7 +245,7 @@ export default function HomePage() {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-r from-[#00FFB2] to-[#00CC8E] rounded-lg flex items-center justify-center">
-                  <span className="text-black font-bold text-sm">SM</span>
+                  <span className="text-black font-bold text-sm">TP</span>
                 </div>
                 <span className="text-xl font-bold gradient-text">
                   Top placed

@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  Play, 
-  Trophy, 
-  Users, 
-  Calendar, 
-  Settings, 
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Home,
+  Play,
+  Trophy,
+  Users,
+  Calendar,
+  Settings,
   DollarSign,
   BookOpen,
   BarChart3,
@@ -20,46 +20,91 @@ import {
   Clock,
   TrendingUp,
   ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
+  ChevronRight,
+} from "lucide-react";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
 
 interface SidebarProps {
-  userType: 'learner' | 'mentor';
+  userType: "learner" | "mentor";
 }
 
 export default function Sidebar({ userType }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const isIncomplete =
+    user?.profile_completion !== undefined && user.profile_completion < 90;
 
-  const learnerMenuItems = [
-    { icon: Home, label: 'Dashboard', href: '/learner' },
-    { icon: Play, label: 'AI Interview', href: '/learner/Interview' },
-    { icon: Trophy, label: 'Scorecard', href: '/learner/scorecard' },
-    { icon: Users, label: 'Find Mentors', href: '/learner/mentors' },
-    { icon: Calendar, label: 'Sessions', href: '/learner/sessions' },
-    { icon: BookOpen, label: 'Resources', href: '/learner/resources' },
-    { icon: Award, label: 'Achievements', href: '/learner/achievements' },
-    { icon: Settings, label: 'Settings', href: '/settings' },
+  type MenuItem = {
+    icon: typeof Home;
+    label: string;
+    href: string;
+    locked?: boolean;
+  };
+
+  const learnerMenuItems: MenuItem[] = [
+    { icon: Home, label: "Dashboard", href: "/learner", locked: false },
+    {
+      icon: Play,
+      label: "AI Interview",
+      href: "/learner/Interview",
+      locked: false,
+    },
+    {
+      icon: Trophy,
+      label: "Scorecard",
+      href: "/learner/scorecard",
+      locked: false,
+    },
+    {
+      icon: Users,
+      label: "Find Mentors",
+      href: "/learner/mentors",
+      locked: true,
+    },
+    {
+      icon: Calendar,
+      label: "Sessions",
+      href: "/learner/sessions",
+      locked: true,
+    },
+    {
+      icon: BookOpen,
+      label: "Resources",
+      href: "/learner/resources",
+      locked: true,
+    },
+    {
+      icon: Award,
+      label: "Achievements",
+      href: "/learner/achievements",
+      locked: false,
+    },
+    { icon: User, label: "Profile", href: "/learner/profile", locked: false },
+    { icon: Settings, label: "Settings", href: "/settings", locked: false },
   ];
 
-  const mentorMenuItems = [
-    { icon: Home, label: 'Dashboard', href: '/mentor' },
-    { icon: Calendar, label: 'Sessions', href: '/mentor/sessions' },
-    { icon: DollarSign, label: 'Earnings', href: '/mentor/earnings' },
-    { icon: User, label: 'Profile', href: '/mentor/profile' },
-    { icon: BarChart3, label: 'Analytics', href: '/mentor/analytics' },
-    { icon: Clock, label: 'Availability', href: '/mentor/availability' },
-    { icon: MessageSquare, label: 'Reviews', href: '/mentor/reviews' },
-    { icon: BookOpen, label: 'Resources', href: '/mentor/resources' },
-    { icon: Settings, label: 'Settings', href: '/settings' },
+  const mentorMenuItems: MenuItem[] = [
+    { icon: Home, label: "Dashboard", href: "/mentor" },
+    { icon: Calendar, label: "Sessions", href: "/mentor/sessions" },
+    { icon: DollarSign, label: "Earnings", href: "/mentor/earnings" },
+    { icon: User, label: "Profile", href: "/mentor/profile" },
+    { icon: BarChart3, label: "Analytics", href: "/mentor/analytics" },
+    { icon: Clock, label: "Availability", href: "/mentor/availability" },
+    { icon: MessageSquare, label: "Reviews", href: "/mentor/reviews" },
+    { icon: BookOpen, label: "Resources", href: "/mentor/resources" },
+    { icon: Settings, label: "Settings", href: "/settings" },
   ];
 
-  const menuItems = userType === 'learner' ? learnerMenuItems : mentorMenuItems;
+  const menuItems = userType === "learner" ? learnerMenuItems : mentorMenuItems;
 
   return (
-    <div className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-[#0A0A0A] border-r border-[#00FFB2]/20 transition-all duration-300 z-40 ${
-      isCollapsed ? 'w-16' : 'w-64'
-    }`}>
+    <div
+      className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-[#0A0A0A] border-r border-[#00FFB2]/20 transition-all duration-300 z-40 ${
+        isCollapsed ? "w-16" : "w-64"
+      }`}
+    >
       {/* Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -73,15 +118,20 @@ export default function Sidebar({ userType }: SidebarProps) {
         {menuItems.map((item, index) => {
           const IconComponent = item.icon;
           const isActive = pathname === item.href;
-          
+          const isDisabled = isIncomplete && item.locked;
+
           return (
             <Link
               key={index}
-              href={item.href}
+              href={isDisabled ? "#" : item.href}
               className={`flex items-center p-3 rounded-lg transition-all duration-200 group ${
-                isActive 
-                  ? 'bg-[#00FFB2]/20 text-[#00FFB2] border border-[#00FFB2]/30' 
-                  : 'text-gray-400 hover:text-white hover:bg-[#1A1A1A]'
+                isActive
+                  ? "bg-[#00FFB2]/20 text-[#00FFB2] border border-[#00FFB2]/30"
+                  : "text-gray-400 hover:text-white hover:bg-[#1A1A1A]"
+              } ${
+                isDisabled
+                  ? "opacity-50 cursor-not-allowed pointer-events-none"
+                  : ""
               }`}
             >
               <IconComponent size={20} className="flex-shrink-0" />
@@ -108,9 +158,11 @@ export default function Sidebar({ userType }: SidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">
-                  {userType === 'learner' ? 'John Doe' : 'Sarah Chen'}
+                  {userType === "learner" ? "John Doe" : "Sarah Chen"}
                 </div>
-                <div className="text-xs text-gray-400 capitalize">{userType}</div>
+                <div className="text-xs text-gray-400 capitalize">
+                  {userType}
+                </div>
               </div>
             </div>
           </div>

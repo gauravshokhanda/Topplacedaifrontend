@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu, X, User, LogOut, Settings } from "lucide-react";
-import { useSelector,useDispatch } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../store/store"; // Adjust the import path as necessary
-import { logout } from '@/store/slices/authSlice';
+import { logout } from "@/store/slices/authSlice";
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -20,11 +20,9 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-[#00FFB2] to-[#00CC8E] rounded-lg flex items-center justify-center">
-              <span className="text-black font-bold text-sm">SM</span>
+              <span className="text-black font-bold text-sm">TP</span>
             </div>
-            <span className="text-xl font-bold gradient-text">
-              Top placed
-            </span>
+            <span className="text-xl font-bold gradient-text">Top placed</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -73,8 +71,9 @@ export default function Navbar() {
                       Profile Settings
                     </Link>
                     <button
-                    onClick={() => dispatch(logout())}
-                    className="flex items-center w-full px-4 py-2 text-sm hover:bg-[#00FFB2]/10 text-red-400">
+                      onClick={() => dispatch(logout())}
+                      className="flex items-center w-full px-4 py-2 text-sm hover:bg-[#00FFB2]/10 text-red-400"
+                    >
                       <LogOut size={16} className="mr-3" />
                       Sign Out
                     </button>

@@ -40,7 +40,11 @@
     "@radix-ui/react-tooltip": "^1.1.2",
     "@reduxjs/toolkit": "^2.8.2",
     "@types/node": "20.6.2",
+<<<<<<< HEAD
     "@types/react": "^18.3.23",
+=======
+    "@types/react": "18.2.25",
+>>>>>>> 63fbe68e59a6b8029c1d6ce7951d9d1e6b415570
     "@types/react-dom": "18.2.7",
     "autoprefixer": "10.4.15",
     "class-variance-authority": "^0.7.0",
