@@ -18,13 +18,12 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import { useSelector,useDispatch } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../../store/store";
-
 
 export default function MentorDashboard() {
   const [isVisible, setIsVisible] = useState(false);
-    const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
     setIsVisible(true);
@@ -98,8 +97,11 @@ export default function MentorDashboard() {
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                   <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                    Good morning, <span className="gradient-text">{user?user.name:"demo"}</span>!
-                    ✨
+                    Good morning,{" "}
+                    <span className="gradient-text">
+                      {user ? user.name : "demo"}
+                    </span>
+                    ! ✨
                   </h1>
                   <p className="text-gray-400 text-lg">
                     Ready to help shape some careers today?
