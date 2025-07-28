@@ -181,7 +181,7 @@ export default function LearnerDashboard() {
                 </div>
 
                 <Link
-                  href="/learner/interview"
+                  href="/learner/interview/setup"
                   className="btn-primary flex items-center justify-center w-full py-3"
                 >
                   <Play size={20} className="mr-2" />
