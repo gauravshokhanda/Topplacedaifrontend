@@ -18,13 +18,39 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export default function InterviewResultsPage() {
   const router = useRouter();
+  const { user, token } = useSelector((state: RootState) => state.auth);
   const [isVisible, setIsVisible] = useState(false);
+  const [freeInterviewsUsed, setFreeInterviewsUsed] = useState(0);
+  const [hasPaidPlan, setHasPaidPlan] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
+    
+    // Check updated free trial usage
+    const checkFreeTrialUsage = async () => {
+      try {
+        const response = await fetch(`${API_URL}/users/${user?._id}/interview-usage`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        setFreeInterviewsUsed(data.freeInterviewsUsed || 0);
+        setHasPaidPlan(data.hasPaidPlan || false);
+      } catch (error) {
+        console.error('Error checking trial usage:', error);
+      }
+    };
+
+    if (user?._id && token) {
+      checkFreeTrialUsage();
+    }
   }, []);
 
   // Mock results data - replace with actual data from your backend
@@ -85,6 +111,7 @@ export default function InterviewResultsPage() {
     return <TrendingDown className="h-4 w-4 text-red-500" />;
   };
 
+  const canTakeAnotherFreeInterview = freeInterviewsUsed < 2 || hasPaidPlan;
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
@@ -112,15 +139,51 @@ export default function InterviewResultsPage() {
                   <Share2 size={16} className="mr-2" />
                   Share Results
                 </button>
-                <button 
-                  onClick={() => router.push('/learner/interview/setup')}
-                  className="btn-primary flex items-center"
-                >
-                  <RefreshCw size={16} className="mr-2" />
-                  Take Another Interview
-                </button>
+                {canTakeAnotherFreeInterview ? (
+                  <button 
+                    onClick={() => router.push('/learner/interview/setup')}
+                    className="btn-primary flex items-center"
+                  >
+                    <RefreshCw size={16} className="mr-2" />
+                    Take Another Interview
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => router.push('/pricing')}
+                    className="btn-primary flex items-center"
+                  >
+                    <Star size={16} className="mr-2" />
+                    Upgrade to Continue
+                  </button>
+                )}
               </div>
             </div>
+            
+            {/* Free Trial Status */}
+            {!hasPaidPlan && (
+              <div className="mt-6">
+                <div className={`p-4 rounded-lg border ${
+                  freeInterviewsUsed >= 2 
+                    ? 'bg-red-500/10 border-red-500/20 text-red-400' 
+                    : 'bg-[#00FFB2]/10 border-[#00FFB2]/20 text-[#00FFB2]'
+                }`}>
+                  <p className="text-sm">
+                    {freeInterviewsUsed >= 2 
+                      ? '🚫 You have used all your free interviews. Upgrade to continue practicing!' 
+                      : `🎉 Free interviews remaining: ${2 - freeInterviewsUsed}/2`
+                    }
+                  </p>
+                  {freeInterviewsUsed >= 2 && (
+                    <button
+                      onClick={() => router.push('/pricing')}
+                      className="mt-2 text-sm underline hover:no-underline"
+                    >
+                      View Pricing Plans
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Overall Score */}
@@ -303,14 +366,26 @@ export default function InterviewResultsPage() {
               <div className="p-6 bg-[#111] rounded-lg">
                 <h3 className="font-semibold mb-3">Practice More</h3>
                 <p className="text-sm text-gray-400 mb-4">
-                  Take another interview to track your improvement
+                  {canTakeAnotherFreeInterview 
+                    ? 'Take another interview to track your improvement'
+                    : 'Upgrade to continue practicing and improving your skills'
+                  }
                 </p>
-                <button 
-                  onClick={() => router.push('/learner/interview/setup')}
-                  className="btn-outline w-full py-2 text-sm"
-                >
-                  Start New Interview
-                </button>
+                {canTakeAnotherFreeInterview ? (
+                  <button 
+                    onClick={() => router.push('/learner/interview/setup')}
+                    className="btn-outline w-full py-2 text-sm"
+                  >
+                    Start New Interview
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => router.push('/pricing')}
+                    className="btn-primary w-full py-2 text-sm"
+                  >
+                    Upgrade Now
+                  </button>
+                )}
               </div>
             </div>
           </div>

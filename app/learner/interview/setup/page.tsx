@@ -5,13 +5,42 @@ import { useRouter } from 'next/navigation';
 import { Play, Code, Users, Brain, Database, Cloud, Briefcase } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function InterviewSetupPage() {
   const router = useRouter();
+  const { user, token } = useSelector((state: RootState) => state.auth);
   const [selectedLevel, setSelectedLevel] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedDuration, setSelectedDuration] = useState('45');
+  const [freeInterviewsUsed, setFreeInterviewsUsed] = useState(0);
+  const [hasPaidPlan, setHasPaidPlan] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  // Check free trial usage on component mount
+  useState(() => {
+    const checkFreeTrialUsage = async () => {
+      try {
+        const response = await fetch(`${API_URL}/users/${user?._id}/interview-usage`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        setFreeInterviewsUsed(data.freeInterviewsUsed || 0);
+        setHasPaidPlan(data.hasPaidPlan || false);
+      } catch (error) {
+        console.error('Error checking trial usage:', error);
+      }
+    };
+
+    if (user?._id && token) {
+      checkFreeTrialUsage();
+    }
+  });
   const interviewLevels = [
     {
       id: 'entry',
@@ -125,11 +154,19 @@ export default function InterviewSetupPage() {
     { value: '90', label: '90 minutes', description: 'In-depth technical interview' }
   ];
 
-  const handleStartInterview = () => {
+  const handleStartInterview = async () => {
     if (!selectedLevel || !selectedCategory) {
       alert('Please select both interview level and category');
       return;
     }
+
+    // Check if user has exceeded free interviews
+    if (freeInterviewsUsed >= 2 && !hasPaidPlan) {
+      router.push('/pricing');
+      return;
+    }
+
+    setLoading(true);
 
     const selectedCategoryData = interviewCategories.find(cat => cat.id === selectedCategory);
     const params = new URLSearchParams({
@@ -142,6 +179,7 @@ export default function InterviewSetupPage() {
     router.push(`/learner/interview/session?${params.toString()}`);
   };
 
+  const canStartFreeInterview = freeInterviewsUsed < 2 || hasPaidPlan;
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
@@ -157,6 +195,32 @@ export default function InterviewSetupPage() {
             <p className="text-gray-400 text-lg">
               Choose your interview preferences and let our AI conduct a personalized session
             </p>
+            
+            {/* Free Trial Status */}
+            <div className="mt-6 max-w-md mx-auto">
+              {!hasPaidPlan && (
+                <div className={`p-4 rounded-lg border ${
+                  freeInterviewsUsed >= 2 
+                    ? 'bg-red-500/10 border-red-500/20 text-red-400' 
+                    : 'bg-[#00FFB2]/10 border-[#00FFB2]/20 text-[#00FFB2]'
+                }`}>
+                  <p className="text-sm">
+                    {freeInterviewsUsed >= 2 
+                      ? '🚫 Free interviews exhausted. Upgrade to continue.' 
+                      : `🎉 Free interviews remaining: ${2 - freeInterviewsUsed}/2`
+                    }
+                  </p>
+                  {freeInterviewsUsed >= 2 && (
+                    <button
+                      onClick={() => router.push('/pricing')}
+                      className="mt-2 text-sm underline hover:no-underline"
+                    >
+                      View Pricing Plans
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Interview Level Selection */}
@@ -167,11 +231,12 @@ export default function InterviewSetupPage() {
                 <button
                   key={level.id}
                   onClick={() => setSelectedLevel(level.id)}
+                  disabled={!canStartFreeInterview}
                   className={`p-6 rounded-lg border-2 transition-all text-left ${
                     selectedLevel === level.id
                       ? 'border-[#00FFB2] bg-[#00FFB2]/10'
                       : 'border-[#333] hover:border-[#00FFB2]/50'
-                  }`}
+                  } ${!canStartFreeInterview ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className="text-3xl mb-3">{level.icon}</div>
                   <h3 className="font-semibold mb-2">{level.name}</h3>
@@ -199,11 +264,12 @@ export default function InterviewSetupPage() {
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
+                    disabled={!canStartFreeInterview}
                     className={`p-6 rounded-lg border-2 transition-all text-left ${
                       selectedCategory === category.id
                         ? 'border-[#00FFB2] bg-[#00FFB2]/10'
                         : 'border-[#333] hover:border-[#00FFB2]/50'
-                    }`}
+                    } ${!canStartFreeInterview ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <div className="flex items-center mb-4">
                       <IconComponent size={24} className={`${category.color} mr-3`} />
@@ -226,19 +292,29 @@ export default function InterviewSetupPage() {
           {/* Duration Selection */}
           <div className="glass-card p-8">
             <h2 className="text-2xl font-semibold mb-6">Interview Duration</h2>
+            <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <p className="text-yellow-400 text-sm">
+                <strong>Note:</strong> Only 30-minute interviews are available for free users. 
+                Upgrade to access longer durations.
+              </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {durations.map((duration) => (
                 <button
                   key={duration.value}
                   onClick={() => setSelectedDuration(duration.value)}
+                  disabled={!canStartFreeInterview || (!hasPaidPlan && duration.value !== '30')}
                   className={`p-4 rounded-lg border-2 transition-all text-center ${
                     selectedDuration === duration.value
                       ? 'border-[#00FFB2] bg-[#00FFB2]/10'
                       : 'border-[#333] hover:border-[#00FFB2]/50'
-                  }`}
+                  } ${(!canStartFreeInterview || (!hasPaidPlan && duration.value !== '30')) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className="text-xl font-bold mb-1">{duration.label}</div>
                   <div className="text-sm text-gray-400">{duration.description}</div>
+                  {!hasPaidPlan && duration.value !== '30' && (
+                    <div className="text-xs text-yellow-400 mt-1">Pro Only</div>
+                  )}
                 </button>
               ))}
             </div>
@@ -248,15 +324,22 @@ export default function InterviewSetupPage() {
           <div className="text-center">
             <button
               onClick={handleStartInterview}
-              disabled={!selectedLevel || !selectedCategory}
+              disabled={!selectedLevel || !selectedCategory || !canStartFreeInterview || loading}
               className="btn-primary px-8 py-4 text-lg flex items-center justify-center mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="h-5 w-5 mr-2" />
-              Start AI Interview
+              {loading ? 'Starting...' : 
+               !canStartFreeInterview ? 'Upgrade Required' : 
+               'Start AI Interview'}
             </button>
-            {(!selectedLevel || !selectedCategory) && (
+            {(!selectedLevel || !selectedCategory) && canStartFreeInterview && (
               <p className="text-red-400 text-sm mt-2">
                 Please select both interview level and category to continue
+              </p>
+            )}
+            {!canStartFreeInterview && (
+              <p className="text-red-400 text-sm mt-2">
+                You have used your 2 free interviews. Please upgrade to continue.
               </p>
             )}
           </div>

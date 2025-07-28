@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   Mic, 
@@ -17,11 +17,14 @@ import {
   FileText,
   Clock,
   User,
-  Bot
+  Bot,
+  AlertTriangle
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import CodeEditor from '@/components/CodeEditor';
 import AIAvatar from '@/components/AIAvatar';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -30,6 +33,7 @@ function InterviewSessionContent() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user, token } = useSelector((state: RootState) => state.auth);
 
   // Interview configuration
   const level = searchParams.get('level');
@@ -55,7 +59,155 @@ function InterviewSessionContent() {
   const [language, setLanguage] = useState('javascript');
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [interviewStarted, setInterviewStarted] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Cleanup media streams
+  const cleanupMediaStreams = useCallback(() => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => {
+        track.stop();
+        console.log(`Stopped ${track.kind} track`);
+      });
+      setMediaStream(null);
+    }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    setIsMicOn(false);
+    setIsCameraOn(false);
+  }, [mediaStream]);
+
+  // Check free trial usage
+  useEffect(() => {
+    const checkFreeTrialUsage = async () => {
+      try {
+        const response = await fetch(`${API_URL}/users/${user?._id}/interview-usage`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        
+        if (data.freeInterviewsUsed >= 2 && !data.hasPaidPlan) {
+          setWarningMessage('You have used your 2 free interviews. Please upgrade to continue.');
+          setShowWarning(true);
+          setTimeout(() => {
+            router.push('/pricing');
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('Error checking trial usage:', error);
+      }
+    };
+
+    if (user?._id && token) {
+      checkFreeTrialUsage();
+    }
+  }, [user, token, router]);
+
+  // Prevent tab switching and navigation
+  useEffect(() => {
+    if (!interviewStarted) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setTabSwitchCount(prev => prev + 1);
+        setWarningMessage(`Warning: Tab switching detected! This is attempt ${tabSwitchCount + 1}. Your interview may be terminated.`);
+        setShowWarning(true);
+        
+        if (tabSwitchCount >= 2) {
+          setWarningMessage('Interview terminated due to multiple tab switches. This violates interview guidelines.');
+          setShowWarning(true);
+          setTimeout(() => {
+            handleEndInterview();
+          }, 2000);
+        }
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Are you sure you want to leave the interview? Your progress will be lost.';
+      return e.returnValue;
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent common shortcuts that could be used to cheat
+      if (
+        (e.ctrlKey || e.metaKey) && 
+        (e.key === 't' || e.key === 'n' || e.key === 'w' || e.key === 'r' || 
+         e.key === 'Tab' || e.key === 'F12' || e.key === 'I')
+      ) {
+        e.preventDefault();
+        setWarningMessage('Keyboard shortcuts are disabled during the interview.');
+        setShowWarning(true);
+      }
+      
+      // Prevent F12, F11, etc.
+      if (e.key.startsWith('F') && e.key !== 'F5') {
+        e.preventDefault();
+        setWarningMessage('Function keys are disabled during the interview.');
+        setShowWarning(true);
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      setWarningMessage('Right-click is disabled during the interview.');
+      setShowWarning(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [interviewStarted, tabSwitchCount]);
+
+  // Enter fullscreen when interview starts
+  useEffect(() => {
+    if (interviewStarted && !isFullscreen) {
+      const enterFullscreen = async () => {
+        try {
+          await document.documentElement.requestFullscreen();
+          setIsFullscreen(true);
+        } catch (error) {
+          console.error('Failed to enter fullscreen:', error);
+          setWarningMessage('Please enable fullscreen mode for the interview.');
+          setShowWarning(true);
+        }
+      };
+      enterFullscreen();
+    }
+  }, [interviewStarted, isFullscreen]);
+
+  // Handle fullscreen exit
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && interviewStarted) {
+        setWarningMessage('Fullscreen mode is required during the interview.');
+        setShowWarning(true);
+        // Try to re-enter fullscreen
+        setTimeout(() => {
+          document.documentElement.requestFullscreen().catch(console.error);
+        }, 1000);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [interviewStarted]);
   // Initialize camera and microphone
   useEffect(() => {
     async function initializeMedia() {
@@ -70,16 +222,14 @@ function InterviewSessionContent() {
         }
       } catch (err) {
         console.error('Failed to access media devices:', err);
+        setWarningMessage('Camera and microphone access is required for the interview.');
+        setShowWarning(true);
       }
     }
 
     initializeMedia();
 
-    return () => {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-      }
-    };
+    // Cleanup will be handled by cleanupMediaStreams
   }, []);
 
   // Timer countdown
@@ -104,6 +254,16 @@ function InterviewSessionContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      cleanupMediaStreams();
+      // Exit fullscreen
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(console.error);
+      }
+    };
+  }, [cleanupMediaStreams]);
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -129,6 +289,25 @@ function InterviewSessionContent() {
   };
 
   const startInterview = async () => {
+    // Record interview start
+    try {
+      await fetch(`${API_URL}/users/${user?._id}/start-interview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          category,
+          level,
+          duration,
+          isFree: true
+        }),
+      });
+    } catch (error) {
+      console.error('Error recording interview start:', error);
+    }
+
     setInterviewStarted(true);
     setIsAISpeaking(true);
     
@@ -168,6 +347,7 @@ function InterviewSessionContent() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           message: userInput,
@@ -215,6 +395,7 @@ function InterviewSessionContent() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           code,
@@ -239,8 +420,43 @@ function InterviewSessionContent() {
     }
   };
 
-  const handleEndInterview = () => {
+  const handleEndInterview = async () => {
+    // Record interview completion
+    try {
+      await fetch(`${API_URL}/users/${user?._id}/complete-interview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          category,
+          level,
+          duration,
+          timeSpent: (parseInt(duration || '45') * 60) - timeRemaining,
+          messages,
+          code: hasCodeEditor ? code : null,
+          tabSwitchCount
+        }),
+      });
+    } catch (error) {
+      console.error('Error recording interview completion:', error);
+    }
+
+    // Cleanup media streams
+    cleanupMediaStreams();
+    
+    // Exit fullscreen
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch (error) {
+        console.error('Error exiting fullscreen:', error);
+      }
+    }
+    
     setInterviewStarted(false);
+    setIsFullscreen(false);
     router.push('/learner/interview/results');
   };
 
@@ -267,6 +483,23 @@ function InterviewSessionContent() {
     <div className="min-h-screen bg-black">
       <Navbar />
       
+      {/* Warning Modal */}
+      {showWarning && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center">
+          <div className="glass-card p-8 max-w-md text-center border-2 border-red-500/50">
+            <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-4 text-red-400">Interview Warning</h3>
+            <p className="text-gray-300 mb-6">{warningMessage}</p>
+            <button
+              onClick={() => setShowWarning(false)}
+              className="btn-primary px-6 py-2"
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="pt-16">
         {/* Header Bar */}
         <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 px-6 py-4">
@@ -279,6 +512,11 @@ function InterviewSessionContent() {
               <div className="text-sm text-gray-400">
                 {category?.toUpperCase()} • {level?.toUpperCase()} Level
               </div>
+              {tabSwitchCount > 0 && (
+                <div className="text-sm text-red-400">
+                  Tab Switches: {tabSwitchCount}/3
+                </div>
+              )}
             </div>
             
             <div className="flex items-center space-x-4">
@@ -454,6 +692,12 @@ function InterviewSessionContent() {
                 Your {category} interview at {level} level is about to begin. 
                 Duration: {duration} minutes.
               </p>
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
+                <p className="text-yellow-400 text-sm">
+                  <strong>Important:</strong> This interview will be in fullscreen mode. 
+                  Tab switching is monitored and limited to 3 attempts.
+                </p>
+              </div>
               <button
                 onClick={startInterview}
                 className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto"
