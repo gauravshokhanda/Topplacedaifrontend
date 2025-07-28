@@ -1,3 +1,7 @@
+  "use client";
+import { Monitor, MonitorOff } from "lucide-react";
+import { useState } from "react";
+interface ScreenShareToggleProps {
   onStart: (stream: MediaStream) => void;
   onStop: () => void;
 }
@@ -33,7 +37,3 @@ export default function ScreenShareToggle({ onStart, onStop }: ScreenShareToggle
     </button>
   );
 }
-import { Monitor, MonitorOff } from "lucide-react";
-import { useState } from "react";
-interface ScreenShareToggleProps {
-"use client";
