@@ -176,7 +176,8 @@ export default function InterviewSetupPage() {
       hasCodeEditor: selectedCategoryData?.hasCodeEditor ? 'true' : 'false'
     });
 
-    router.push(`/learner/interview/session?${params.toString()}`);
+    // For now, redirect to voice interview session
+    router.push(`/learner/interview/voice-session?${params.toString()}`);
   };
 
   const canStartFreeInterview = freeInterviewsUsed < 2 || hasPaidPlan;

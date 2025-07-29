@@ -47,7 +47,7 @@ export default function Sidebar({ userType }: SidebarProps) {
     { icon: Home, label: "Dashboard", href: "/learner", locked: false },
     {
       icon: Play,
-      label: "AI Interview",
+      label: "Voice Interview",
       href: "/learner/interview/setup",
       locked: false,
     },

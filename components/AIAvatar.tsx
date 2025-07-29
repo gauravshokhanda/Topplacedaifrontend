@@ -70,7 +70,7 @@ export default function AIAvatar({ isActive }: AIAvatarProps) {
         <div className={`text-sm font-medium transition-colors duration-300 ${
           isActive ? 'text-[#00FFB2]' : 'text-gray-400'
         }`}>
-          {isActive ? 'Speaking...' : 'Listening'}
+          {isActive ? '🎤 Speaking...' : '👂 Listening'}
         </div>
       </div>
     </div>
