@@ -25,6 +25,15 @@ import CodeEditor from '@/components/CodeEditor';
 import AIAvatar from '@/components/AIAvatar';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
+import { 
+  initializeInterview, 
+  sendMessageToAI, 
+  executeCode, 
+  completeInterview,
+  buildUserProfile,
+  buildInterviewConfig 
+} from '@/utils/api-helpers';
+import { InitializeInterviewPayload, AIConversationPayload, CodeExecutionPayload } from '@/types/interview-payloads';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -289,21 +298,24 @@ function InterviewSessionContent() {
   };
 
   const startInterview = async () => {
-    // Record interview start
+    // Initialize interview with comprehensive payload
     try {
-      await fetch(`${API_URL}/users/${user?._id}/start-interview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          category,
-          level,
-          duration,
-          isFree: true
-        }),
-      });
+      const sessionId = `session_${Date.now()}_${user?._id}`;
+      
+      const initPayload: InitializeInterviewPayload = {
+        user: buildUserProfile(user),
+        configuration: buildInterviewConfig(level || 'mid', category || 'fullstack', duration || '30'),
+        context: {
+          sessionId,
+          startTime: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          isFreeInterview: true
+        }
+      };
+      
+      const response = await initializeInterview(initPayload);
+      console.log('Interview initialized:', response);
     } catch (error) {
       console.error('Error recording interview start:', error);
     }
@@ -342,36 +354,57 @@ function InterviewSessionContent() {
     setIsAISpeaking(true);
 
     try {
-      // Send to your backend AI
-      const response = await fetch(`${API_URL}/ai/interview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+      // Send comprehensive AI conversation payload
+      const conversationPayload: AIConversationPayload = {
+        sessionId: `session_${Date.now()}_${user?._id}`,
+        user: {
+          id: user?._id || '',
+          name: user?.name || '',
+          level: level || 'mid',
+          category: category || 'fullstack'
         },
-        body: JSON.stringify({
-          message: userInput,
-          code: hasCodeEditor ? code : null,
-          language: hasCodeEditor ? language : null,
-          category,
-          level,
-          conversationHistory: messages
-        }),
-      });
+        message: {
+          id: userMessage.id,
+          type: 'user',
+          content: userInput,
+          timestamp: new Date().toISOString()
+        },
+        conversationHistory: messages.map(msg => ({
+          id: msg.id,
+          type: msg.type,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString()
+        })),
+        currentContext: {
+          questionNumber: messages.filter(m => m.type === 'ai').length + 1,
+          timeElapsed: (parseInt(duration || '45') * 60) - timeRemaining,
+          timeRemaining,
+          currentTopic: category || 'general',
+          difficulty: level || 'mid'
+        },
+        userSkills: user?.tech_stack ? user.tech_stack.split(',') : [],
+        interviewGoals: user?.goals ? [user.goals] : [],
+        codeContext: hasCodeEditor ? {
+          hasCodeEditor: true,
+          currentCode: code,
+          language,
+          codeSubmissions: messages.filter(m => m.content.includes('```')).length
+        } : undefined
+      };
 
-      const data = await response.json();
+      const response = await sendMessageToAI(conversationPayload);
       
       const aiMessage = {
         id: (Date.now() + 1).toString(),
         type: 'ai' as const,
-        content: data.response || 'I understand. Let me ask you another question...',
+        content: response.response || 'I understand. Let me ask you another question...',
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, aiMessage]);
       
-      if (data.nextQuestion) {
-        setCurrentQuestion(data.nextQuestion);
+      if (response.nextQuestion) {
+        setCurrentQuestion(response.nextQuestion);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -391,21 +424,29 @@ function InterviewSessionContent() {
     if (!code.trim()) return;
 
     try {
-      const response = await fetch(`${API_URL}/code/execute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+      const codePayload: CodeExecutionPayload = {
+        sessionId: `session_${Date.now()}_${user?._id}`,
+        user: {
+          id: user?._id || '',
+          name: user?.name || '',
+          level: level || 'mid',
+          category: category || 'fullstack'
         },
-        body: JSON.stringify({
-          code,
+        code: {
+          content: code,
           language,
-          category,
-          level
-        }),
-      });
+          questionContext: currentQuestion || 'Code execution',
+          submissionNumber: messages.filter(m => m.content.includes('Code execution result')).length + 1
+        },
+        interviewContext: {
+          timeElapsed: (parseInt(duration || '45') * 60) - timeRemaining,
+          currentQuestion: currentQuestion || 'Code Challenge',
+          expectedOutput: undefined,
+          testCases: []
+        }
+      };
 
-      const result = await response.json();
+      const result = await executeCode(codePayload);
       
       const codeResultMessage = {
         id: Date.now().toString(),
@@ -421,24 +462,56 @@ function InterviewSessionContent() {
   };
 
   const handleEndInterview = async () => {
-    // Record interview completion
+    // Send comprehensive completion payload
     try {
-      await fetch(`${API_URL}/users/${user?._id}/complete-interview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+      const completionPayload = {
+        sessionId: `session_${Date.now()}_${user?._id}`,
+        user: buildUserProfile(user),
+        configuration: buildInterviewConfig(level || 'mid', category || 'fullstack', duration || '30'),
+        results: {
+          status: tabSwitchCount >= 3 ? 'terminated' : 'completed',
+          completedAt: new Date().toISOString(),
+          totalTimeSpent: (parseInt(duration || '45') * 60) - timeRemaining,
+          questionsAnswered: messages.filter(m => m.type === 'user').length,
+          totalQuestions: messages.filter(m => m.type === 'ai').length,
+          finalScores: {
+            overall: 0, // Will be calculated by backend
+            technical: 0,
+            communication: 0,
+            problemSolving: 0,
+            codeQuality: hasCodeEditor ? 0 : undefined
+          }
         },
-        body: JSON.stringify({
-          category,
-          level,
-          duration,
-          timeSpent: (parseInt(duration || '45') * 60) - timeRemaining,
-          messages,
-          code: hasCodeEditor ? code : null,
-          tabSwitchCount
-        }),
-      });
+        conversationHistory: messages.map(msg => ({
+          id: msg.id,
+          type: msg.type,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString()
+        })),
+        codeSubmissions: hasCodeEditor ? [{
+          questionId: 'final_code',
+          question: currentQuestion || 'Final code submission',
+          code,
+          language,
+          submittedAt: new Date().toISOString(),
+          executionResult: null,
+          score: 0,
+          feedback: ''
+        }] : undefined,
+        violations: Array.from({ length: tabSwitchCount }, (_, i) => ({
+          type: 'tab_switch',
+          timestamp: new Date().toISOString(),
+          description: `Tab switch violation #${i + 1}`
+        })),
+        aiAnalysis: {
+          strengths: [],
+          improvements: [],
+          detailedFeedback: {},
+          recommendations: []
+        }
+      };
+      
+      await completeInterview(completionPayload);
     } catch (error) {
       console.error('Error recording interview completion:', error);
     }
