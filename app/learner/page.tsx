@@ -243,6 +243,12 @@ export default function LearnerDashboard() {
                 >
                   View Detailed Report
                 </Link>
+                <Link
+                  href="/learner/history"
+                  className="btn-outline w-full mt-2 py-2 text-center block text-sm"
+                >
+                  View All Records
+                </Link>
               </div>
             </div>
 

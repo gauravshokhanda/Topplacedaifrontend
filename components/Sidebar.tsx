@@ -58,6 +58,12 @@ export default function Sidebar({ userType }: SidebarProps) {
       locked: false,
     },
     {
+      icon: BarChart3,
+      label: "Interview History",
+      href: "/learner/history",
+      locked: false,
+    },
+    {
       icon: Users,
       label: "Find Mentors",
       href: "/learner/mentors",
