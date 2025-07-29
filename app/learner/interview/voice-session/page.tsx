@@ -20,7 +20,9 @@ import {
   Download,
   Volume2,
   VolumeX,
-  Pause
+  Pause,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import CodeEditor from '@/components/CodeEditor';
@@ -142,6 +144,9 @@ function VoiceInterviewContent() {
   const [interviewProgress, setInterviewProgress] = useState(0);
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [showCodeEditor, setShowCodeEditor] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
+  const [speechSynthesis, setSpeechSynthesis] = useState<any>(null);
 
   // Fake WebSocket simulation
   const [fakeWebSocket, setFakeWebSocket] = useState<any>(null);
@@ -161,38 +166,138 @@ function VoiceInterviewContent() {
     }
   }, [interviewStarted]);
 
-  // Fake Speech-to-Text API
-  const fakeSpeechToText = async (audioData: string): Promise<string> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Return mock response based on current question
-    const mockResponse = MOCK_USER_RESPONSES[currentQuestionIndex] || "I understand the question.";
-    
-    console.log('Fake Speech-to-Text API Call:', {
-      request: { audio: audioData },
-      response: { transcript: mockResponse }
-    });
-    
-    return mockResponse;
-  };
+  // Initialize Google Speech Recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = false;
+      recognitionInstance.lang = 'en-US';
+      
+      recognitionInstance.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setTranscript(transcript);
+        
+        // Add user message
+        const userMessage: Message = {
+          id: `user_${Date.now()}`,
+          type: 'user',
+          content: transcript,
+          timestamp: new Date()
+        };
 
-  // Fake TTS Audio Play
-  const playAIAudio = (audioUrl: string, text: string) => {
+        setMessages(prev => [...prev, userMessage]);
+        
+        // Simulate WebSocket response
+        if (fakeWebSocket) {
+          const wsMessage = {
+            type: "user_answer",
+            content: transcript,
+            questionNumber: currentQuestionIndex + 1
+          };
+          fakeWebSocket.send(JSON.stringify(wsMessage));
+        }
+
+        setQuestionsAnswered(prev => prev + 1);
+        setCurrentQuestionIndex(prev => prev + 1);
+
+        // Wait a moment then ask next question
+        setTimeout(() => {
+          askNextQuestion();
+        }, 2000);
+      };
+      
+      recognitionInstance.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setTranscript('Error recognizing speech. Please try again.');
+        setIsListening(false);
+      };
+      
+      recognitionInstance.onend = () => {
+        setIsListening(false);
+      };
+      
+      setRecognition(recognitionInstance);
+    }
+    
+    // Initialize Speech Synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      setSpeechSynthesis(window.speechSynthesis);
+    }
+  }, []);
+
+  // Real TTS Audio Play using Google Text-to-Speech
+  const playAIAudio = async (audioUrl: string, text: string) => {
     setIsAISpeaking(true);
     setCurrentAudioUrl(audioUrl);
     setIsAudioPlaying(true);
     
-    // Simulate audio playing
-    console.log('Playing AI Audio:', { audioUrl, text });
-    
-    // Simulate audio duration (3-5 seconds)
-    const duration = Math.random() * 2000 + 3000;
-    setTimeout(() => {
-      setIsAISpeaking(false);
-      setIsAudioPlaying(false);
-      setCurrentAudioUrl(null);
-    }, duration);
+    if (speechSynthesis) {
+      // Use browser's built-in speech synthesis
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      // Get a female voice if available
+      const voices = speechSynthesis.getVoices();
+      const femaleVoice = voices.find(voice => 
+        voice.name.includes('Female') || 
+        voice.name.includes('Samantha') ||
+        voice.name.includes('Karen') ||
+        voice.gender === 'female'
+      );
+      
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+      }
+      
+      utterance.onend = () => {
+        setIsAISpeaking(false);
+        setIsAudioPlaying(false);
+        setCurrentAudioUrl(null);
+      };
+      
+      speechSynthesis.speak(utterance);
+    } else {
+      // Fallback to simulation
+      console.log('Playing AI Audio:', { audioUrl, text });
+      const duration = Math.random() * 2000 + 3000;
+      setTimeout(() => {
+        setIsAISpeaking(false);
+        setIsAudioPlaying(false);
+        setCurrentAudioUrl(null);
+      }, duration);
+    }
+  };
+
+  // Google Speech-to-Text API call
+  const callGoogleSpeechToText = async (audioBlob: Blob): Promise<string> => {
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      
+      const response = await fetch('/api/speech-to-text', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Speech-to-text API failed');
+      }
+      
+      const data = await response.json();
+      return data.transcript || 'Could not transcribe audio';
+    } catch (error) {
+      console.error('Google Speech-to-Text error:', error);
+      // Fallback to mock response
+      return MOCK_USER_RESPONSES[currentQuestionIndex] || "I understand the question.";
+    }
   };
 
   // Initialize camera and microphone
@@ -320,52 +425,44 @@ function VoiceInterviewContent() {
     setIsListening(true);
     setTranscript('Listening...');
 
-    try {
-      // Simulate recording audio
-      const fakeAudioData = "base64-fake-audio-data";
-      
-      // Call fake speech-to-text API
-      const transcriptResult = await fakeSpeechToText(fakeAudioData);
-      
-      setTranscript(transcriptResult);
-      
-      // Add user message
-      const userMessage: Message = {
-        id: `user_${Date.now()}`,
-        type: 'user',
-        content: transcriptResult,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, userMessage]);
-      
-      // Simulate WebSocket response
-      if (fakeWebSocket) {
-        const wsMessage = {
-          type: "user_answer",
-          content: transcriptResult,
-          questionNumber: currentQuestionIndex + 1
-        };
-        fakeWebSocket.send(JSON.stringify(wsMessage));
+    if (recognition) {
+      try {
+        recognition.start();
+      } catch (error) {
+        console.error('Failed to start speech recognition:', error);
+        setIsListening(false);
+        setTranscript('Speech recognition not available. Please try again.');
       }
+    } else {
+      // Fallback to mock response
+      setTimeout(async () => {
+        const mockResponse = MOCK_USER_RESPONSES[currentQuestionIndex] || "I understand the question.";
+        setTranscript(mockResponse);
+        
+        const userMessage: Message = {
+          id: `user_${Date.now()}`,
+          type: 'user',
+          content: mockResponse,
+          timestamp: new Date()
+        };
 
-      setQuestionsAnswered(prev => prev + 1);
-      setCurrentQuestionIndex(prev => prev + 1);
+        setMessages(prev => [...prev, userMessage]);
+        setQuestionsAnswered(prev => prev + 1);
+        setCurrentQuestionIndex(prev => prev + 1);
 
-      // Wait a moment then ask next question
-      setTimeout(() => {
-        askNextQuestion();
+        setTimeout(() => {
+          askNextQuestion();
+        }, 2000);
+        
+        setIsListening(false);
       }, 2000);
-
-    } catch (error) {
-      console.error('Speech recognition error:', error);
-      setTranscript('Error recognizing speech. Please try again.');
-    } finally {
-      setIsListening(false);
     }
   };
 
   const stopListening = () => {
+    if (recognition) {
+      recognition.stop();
+    }
     setIsListening(false);
     setTranscript('');
   };
@@ -538,6 +635,16 @@ function VoiceInterviewContent() {
                 <Download size={20} />
               </button>
               
+              {hasCodeEditor && (
+                <button
+                  onClick={() => setShowCodeEditor(!showCodeEditor)}
+                  className="p-2 rounded-full bg-[#00FFB2]/20 text-[#00FFB2] hover:bg-[#00FFB2]/30"
+                  title={showCodeEditor ? "Hide Code Editor" : "Show Code Editor"}
+                >
+                  {showCodeEditor ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                </button>
+              )}
+              
               <button
                 onClick={handleEndInterview}
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
@@ -674,7 +781,7 @@ function VoiceInterviewContent() {
           </div>
 
           {/* Right Panel - Code Editor (if applicable) */}
-          {hasCodeEditor ? (
+          {hasCodeEditor && showCodeEditor ? (
             <div className="w-1/2 flex flex-col">
               <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 p-4">
                 <div className="flex items-center justify-between">
@@ -683,6 +790,13 @@ function VoiceInterviewContent() {
                     <span className="font-semibold">Code Editor</span>
                   </div>
                   <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setShowCodeEditor(false)}
+                      className="p-1 rounded bg-[#1A1A1A] hover:bg-[#333] text-gray-400 hover:text-white"
+                      title="Close Code Editor"
+                    >
+                      <Minimize2 size={16} />
+                    </button>
                     <select
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
@@ -713,7 +827,24 @@ function VoiceInterviewContent() {
                 />
               </div>
             </div>
-          ) : (
+          ) : hasCodeEditor && !showCodeEditor ? (
+            <div className="w-1/2 flex items-center justify-center bg-[#0A0A0A] border-l border-[#00FFB2]/20">
+              <div className="text-center">
+                <Code size={48} className="text-gray-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Code Editor Available</h3>
+                <p className="text-gray-400 mb-4">
+                  Click the code editor button in the header to open the coding environment.
+                </p>
+                <button
+                  onClick={() => setShowCodeEditor(true)}
+                  className="btn-primary flex items-center mx-auto"
+                >
+                  <Code size={16} className="mr-2" />
+                  Open Code Editor
+                </button>
+              </div>
+            </div>
+          ) : !hasCodeEditor ? (
             <div className="w-1/2 flex items-center justify-center bg-[#0A0A0A]">
               <div className="text-center">
                 <Bot size={48} className="text-gray-500 mx-auto mb-4" />
@@ -732,7 +863,7 @@ function VoiceInterviewContent() {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Start Interview Overlay */}
