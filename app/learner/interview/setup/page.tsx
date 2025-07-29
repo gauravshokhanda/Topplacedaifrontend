@@ -29,11 +29,29 @@ export default function InterviewSetupPage() {
             'Authorization': `Bearer ${token}`,
           },
         });
+        
+        if (!response.ok) {
+          console.warn('API not available, using default values');
+          setFreeInterviewsUsed(0);
+          setHasPaidPlan(false);
+          return;
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('API returned non-JSON response, using default values');
+          setFreeInterviewsUsed(0);
+          setHasPaidPlan(false);
+          return;
+        }
+
         const data = await response.json();
         setFreeInterviewsUsed(data.freeInterviewsUsed || 0);
         setHasPaidPlan(data.hasPaidPlan || false);
       } catch (error) {
-        console.error('Error checking trial usage:', error);
+        console.warn('Error checking trial usage, using default values:', error.message);
+        setFreeInterviewsUsed(0);
+        setHasPaidPlan(false);
       }
     };
 
