@@ -117,6 +117,9 @@ function VoiceInterviewContent() {
   const [isConnected, setIsConnected] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
 
+  // Real WebSocket connection
+  const [fakeWebSocket, setFakeWebSocket] = useState<any>(null);
+
   // Initialize real WebSocket
   useEffect(() => {
     const socketConnection = io(WEBSOCKET_URL);
@@ -214,6 +217,8 @@ function VoiceInterviewContent() {
     };
   };
 
+  const MOCK_INTERVIEW_PAYLOAD = buildInterviewPayload();
+
   // Initialize Google Speech Recognition
   useEffect(() => {
     if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
@@ -238,15 +243,23 @@ function VoiceInterviewContent() {
 
         setMessages(prev => [...prev, userMessage]);
         
-        // Send to real WebSocket
-        if (socket && sessionId) {
-          socket.emit('question', {
-            sessionId: sessionId,
-            message: transcript
-          });
+        // Simulate WebSocket response
+        if (fakeWebSocket) {
+          const wsMessage = {
+            type: "user_answer",
+            content: transcript,
+            questionNumber: currentQuestionIndex + 1
+          };
+          fakeWebSocket.send(JSON.stringify(wsMessage));
         }
 
         setQuestionsAnswered(prev => prev + 1);
+        setCurrentQuestionIndex(prev => prev + 1);
+
+        // Wait a moment then ask next question
+        setTimeout(() => {
+          askNextQuestion();
+        }, 2000);
       };
       
       recognitionInstance.onerror = (event: any) => {
@@ -415,34 +428,43 @@ function VoiceInterviewContent() {
   };
 
   const startInterview = async () => {
-    if (!socket || !isConnected) {
-      setWarningMessage('WebSocket connection not established. Please try again.');
-      setShowWarning(true);
-      return;
-    }
-
-    const payload = buildInterviewPayload();
-    console.log('Initialize Interview Payload:', payload);
+    console.log('Initialize Interview Payload:', MOCK_INTERVIEW_PAYLOAD);
     
     setInterviewStarted(true);
     
-    // Send initialization to WebSocket
-    socket.emit('init-interview', payload);
+    // Start with first AI question
+    askNextQuestion();
   };
 
   const askNextQuestion = () => {
-    if (currentQuestionIndex < MOCK_AI_QUESTIONS.length) {
-      const question = MOCK_AI_QUESTIONS[currentQuestionIndex];
-      const aiMessage: Message = {
-        id: `ai_${Date.now()}`,
-        type: 'ai',
+    if (currentQuestionIndex >= MOCK_AI_QUESTIONS.length) {
+      handleEndInterview();
+      return;
+    }
+
+    const question = MOCK_AI_QUESTIONS[currentQuestionIndex];
+    const aiMessage: Message = {
+      id: `ai_${Date.now()}`,
+      type: 'ai',
+      content: question.text,
+      timestamp: new Date(),
+      audioUrl: question.audioUrl
+    };
+
+    setMessages(prev => [...prev, aiMessage]);
+    
+    // Play AI audio
+    playAIAudio(question.audioUrl, question.text);
+
+    // Simulate WebSocket message
+    if (fakeWebSocket) {
+      const wsMessage = {
+        type: "ai_question",
         content: question.text,
-        timestamp: new Date(),
-        audioUrl: question.audioUrl
+        questionNumber: currentQuestionIndex + 1,
+        totalQuestions: MOCK_AI_QUESTIONS.length
       };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      playAIAudio(question.audioUrl, question.text);
+      fakeWebSocket.send(JSON.stringify(wsMessage));
     }
   };
 
@@ -524,9 +546,9 @@ function VoiceInterviewContent() {
 
   const handleEndInterview = async () => {
     const completionPayload = {
-      sessionId: buildInterviewPayload().context.sessionId,
-      user: buildInterviewPayload().user,
-      configuration: buildInterviewPayload().configuration,
+      sessionId: MOCK_INTERVIEW_PAYLOAD.context.sessionId,
+      user: MOCK_INTERVIEW_PAYLOAD.user,
+      configuration: MOCK_INTERVIEW_PAYLOAD.configuration,
       results: {
         status: 'completed',
         completedAt: new Date().toISOString(),
