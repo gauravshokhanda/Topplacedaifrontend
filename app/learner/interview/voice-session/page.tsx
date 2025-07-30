@@ -22,7 +22,9 @@ import {
   VolumeX,
   Pause,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import CodeEditor from '@/components/CodeEditor';
@@ -31,41 +33,13 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { io, Socket } from 'socket.io-client';
 
-// Your backend API URL
+// Your backend API URLs
 const API_URL = 'https://1facc094d653.ngrok-free.app';
 const WEBSOCKET_URL = 'http://localhost:3002';
 
-// Mock AI Questions
-const MOCK_AI_QUESTIONS = [
-  { text: "Hello John, how are you today?", audioUrl: "/static/ai_hello.mp3" },
-  { text: "Tell me about yourself and your experience.", audioUrl: "/static/ai_intro.mp3" },
-  { text: "What are your strengths as a full-stack developer?", audioUrl: "/static/ai_strengths.mp3" },
-  { text: "Can you explain the difference between React and Angular?", audioUrl: "/static/ai_react.mp3" },
-  { text: "How do you handle state management in React applications?", audioUrl: "/static/ai_state.mp3" },
-  { text: "Write a function to reverse a string in JavaScript.", audioUrl: "/static/ai_code1.mp3" },
-  { text: "Explain how you would optimize a slow database query.", audioUrl: "/static/ai_database.mp3" },
-  { text: "What is your experience with Node.js and Express?", audioUrl: "/static/ai_nodejs.mp3" },
-  { text: "How do you ensure code quality in your projects?", audioUrl: "/static/ai_quality.mp3" },
-  { text: "Do you have any questions for me about the role?", audioUrl: "/static/ai_final.mp3" }
-];
-
-// Mock user responses for speech-to-text simulation
-const MOCK_USER_RESPONSES = [
-  "I am doing great, thank you for asking!",
-  "I have 3 years of experience in full-stack development, working primarily with React and Node.js.",
-  "My strengths include problem-solving, clean code writing, and ability to work with both frontend and backend technologies.",
-  "React is a library focused on UI components, while Angular is a full framework with more built-in features.",
-  "I use Redux for complex state management and Context API for simpler state sharing between components.",
-  "I would use the split and reverse methods, or implement a manual loop solution.",
-  "I would analyze the query execution plan, add proper indexes, and optimize the WHERE clauses.",
-  "I have extensive experience with Node.js and Express, building RESTful APIs and handling authentication.",
-  "I use ESLint, Prettier, write unit tests, and conduct code reviews to maintain high code quality.",
-  "Yes, what are the main challenges the team is currently facing?"
-];
-
 interface Message {
   id: string;
-  type: 'ai' | 'user';
+  type: 'ai' | 'user' | 'system';
   content: string;
   timestamp: Date;
   audioUrl?: string;
@@ -92,7 +66,6 @@ function VoiceInterviewContent() {
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(parseInt(duration) * 60);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState('javascript');
@@ -116,67 +89,10 @@ function VoiceInterviewContent() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
+  const [totalQuestions, setTotalQuestions] = useState(10);
+  const [currentQuestionNumber, setCurrentQuestionNumber] = useState(0);
 
-  // Real WebSocket connection
-  const [fakeWebSocket, setFakeWebSocket] = useState<any>(null);
-
-  // Initialize real WebSocket
-  useEffect(() => {
-    const socketConnection = io(WEBSOCKET_URL);
-    
-    socketConnection.on('connect', () => {
-      console.log('Connected to WebSocket server');
-      setIsConnected(true);
-      setSocket(socketConnection);
-    });
-
-    socketConnection.on('disconnect', () => {
-      console.log('Disconnected from WebSocket server');
-      setIsConnected(false);
-    });
-
-    socketConnection.on('welcome', (data) => {
-      console.log('Welcome message:', data);
-    });
-
-    socketConnection.on('init-interview-response', (data) => {
-      if (data.success) {
-        setSessionId(data.sessionId);
-        console.log('Interview initialized:', data);
-        
-        // Add AI welcome message
-        const welcomeMessage: Message = {
-          id: `ai_welcome_${Date.now()}`,
-          type: 'ai',
-          content: data.message,
-          timestamp: new Date()
-        };
-        setMessages([welcomeMessage]);
-        
-        // Play welcome audio
-        playAIAudio('', data.message);
-      }
-    });
-
-    socketConnection.on('question-response', (data) => {
-      if (data.success) {
-        const aiMessage: Message = {
-          id: `ai_${Date.now()}`,
-          type: 'ai',
-          content: data.response,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        playAIAudio('', data.response);
-      }
-    });
-
-    return () => {
-      socketConnection.disconnect();
-    };
-  }, []);
-
-  // Build interview payload from user data
+  // Build real interview payload from user data
   const buildInterviewPayload = () => {
     return {
       user: {
@@ -188,24 +104,30 @@ function VoiceInterviewContent() {
         skills: user?.tech_stack ? user.tech_stack.split(',') : ["JavaScript", "React", "Node.js", "Python", "SQL"],
         goals: user?.goals || "Land a senior developer role",
         education: user?.education ? JSON.parse(user.education) : [
-          { degree: "B.Tech in Computer Science", institution: "IIT Delhi", year: 2019 }
+          { degree: "B.Tech in Computer Science", institution: "Indian Institute of Technology, Delhi", year: 2019 }
         ],
         workExperience: [
           {
             title: "Full-Stack Developer",
             company: "TechNova Solutions",
             duration: "Jan 2021 - Present",
-            description: "Led development of scalable web applications using React and Node.js."
+            description: "Led development of scalable web applications using React and Node.js. Integrated RESTful APIs and optimized performance across multiple products."
+          },
+          {
+            title: "Frontend Developer Intern",
+            company: "CodeCraft Inc.",
+            duration: "Jun 2020 - Dec 2020",
+            description: "Worked on enhancing user interfaces with React and Material UI. Assisted in building reusable component libraries and responsive layouts."
           }
         ],
         profileCompletion: user?.profile_completion || 85
       },
       configuration: {
-        level: level || "mid",
-        category: category || "fullstack",
-        duration: parseInt(duration) || 30,
+        level: level,
+        category: category,
+        duration: parseInt(duration),
         hasCodeEditor: hasCodeEditor,
-        language: language || "javascript"
+        language: language
       },
       context: {
         sessionId: `session_${Date.now()}_${user?._id}`,
@@ -217,7 +139,127 @@ function VoiceInterviewContent() {
     };
   };
 
-  const MOCK_INTERVIEW_PAYLOAD = buildInterviewPayload();
+  // Initialize real WebSocket connection
+  useEffect(() => {
+    console.log('Connecting to WebSocket server...');
+    const socketConnection = io(WEBSOCKET_URL);
+    
+    socketConnection.on('connect', () => {
+      console.log('✅ Connected to WebSocket server');
+      setIsConnected(true);
+      setSocket(socketConnection);
+      
+      const systemMessage: Message = {
+        id: `system_${Date.now()}`,
+        type: 'system',
+        content: '🟢 Connected to interview server',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, systemMessage]);
+    });
+
+    socketConnection.on('disconnect', () => {
+      console.log('❌ Disconnected from WebSocket server');
+      setIsConnected(false);
+      
+      const systemMessage: Message = {
+        id: `system_${Date.now()}`,
+        type: 'system',
+        content: '🔴 Disconnected from interview server',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, systemMessage]);
+    });
+
+    socketConnection.on('welcome', (data) => {
+      console.log('Welcome message:', data);
+      const welcomeMessage: Message = {
+        id: `welcome_${Date.now()}`,
+        type: 'system',
+        content: `${data.message} (Client ID: ${data.clientId})`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, welcomeMessage]);
+    });
+
+    socketConnection.on('init-interview-response', (data) => {
+      console.log('Interview initialization response:', data);
+      if (data.success) {
+        setSessionId(data.sessionId);
+        setTotalQuestions(data.firstQuestion?.totalQuestions || 10);
+        
+        const aiMessage: Message = {
+          id: `ai_init_${Date.now()}`,
+          type: 'ai',
+          content: data.message,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        
+        // Add first question if provided
+        if (data.firstQuestion) {
+          const questionMessage: Message = {
+            id: `ai_q1_${Date.now()}`,
+            type: 'ai',
+            content: data.firstQuestion.question,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, questionMessage]);
+          setCurrentQuestionNumber(data.firstQuestion.questionNumber);
+          
+          // Play AI audio for first question
+          playAIAudio('', data.firstQuestion.question);
+        } else {
+          // Play AI audio for welcome message
+          playAIAudio('', data.message);
+        }
+      } else {
+        const errorMessage: Message = {
+          id: `error_${Date.now()}`,
+          type: 'system',
+          content: `❌ Failed to initialize interview: ${data.message}`,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    });
+
+    socketConnection.on('question-response', (data) => {
+      console.log('AI question response:', data);
+      if (data.success) {
+        const aiMessage: Message = {
+          id: `ai_${Date.now()}`,
+          type: 'ai',
+          content: data.response,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        
+        // Play AI audio
+        playAIAudio('', data.response);
+        
+        // Update question number if provided
+        if (data.questionNumber) {
+          setCurrentQuestionNumber(data.questionNumber);
+        }
+      } else {
+        const errorMessage: Message = {
+          id: `error_${Date.now()}`,
+          type: 'system',
+          content: `❌ Error: ${data.message}`,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    });
+
+    setSocket(socketConnection);
+
+    return () => {
+      console.log('Cleaning up WebSocket connection');
+      socketConnection.disconnect();
+    };
+  }, []);
 
   // Initialize Google Speech Recognition
   useEffect(() => {
@@ -231,6 +273,7 @@ function VoiceInterviewContent() {
       
       recognitionInstance.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
+        console.log('Speech recognition result:', transcript);
         setTranscript(transcript);
         
         // Add user message
@@ -243,23 +286,16 @@ function VoiceInterviewContent() {
 
         setMessages(prev => [...prev, userMessage]);
         
-        // Simulate WebSocket response
-        if (fakeWebSocket) {
-          const wsMessage = {
-            type: "user_answer",
-            content: transcript,
-            questionNumber: currentQuestionIndex + 1
-          };
-          fakeWebSocket.send(JSON.stringify(wsMessage));
+        // Send to WebSocket
+        if (socket && sessionId) {
+          console.log('Sending user response via WebSocket:', transcript);
+          socket.emit('question', {
+            sessionId: sessionId,
+            message: transcript
+          });
         }
 
         setQuestionsAnswered(prev => prev + 1);
-        setCurrentQuestionIndex(prev => prev + 1);
-
-        // Wait a moment then ask next question
-        setTimeout(() => {
-          askNextQuestion();
-        }, 2000);
       };
       
       recognitionInstance.onerror = (event: any) => {
@@ -269,6 +305,7 @@ function VoiceInterviewContent() {
       };
       
       recognitionInstance.onend = () => {
+        console.log('Speech recognition ended');
         setIsListening(false);
       };
       
@@ -279,77 +316,75 @@ function VoiceInterviewContent() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       setSpeechSynthesis(window.speechSynthesis);
     }
-  }, []);
+  }, [socket, sessionId]);
 
   // Real TTS Audio Play using Google Text-to-Speech
   const playAIAudio = async (audioUrl: string, text: string) => {
+    console.log('Playing AI audio:', text);
     setIsAISpeaking(true);
     setCurrentAudioUrl(audioUrl);
     setIsAudioPlaying(true);
     
-    if (speechSynthesis) {
-      // Use browser's built-in speech synthesis
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 1;
+    try {
+      // Try Google TTS API first
+      const response = await fetch('/api/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
       
-      // Get a female voice if available
-      const voices = speechSynthesis.getVoices();
-      const femaleVoice = voices.find(voice => 
-        voice.name.includes('Female') || 
-        voice.name.includes('Samantha') ||
-        voice.name.includes('Karen') ||
-        voice.gender === 'female'
-      );
-      
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.useBrowserTTS && speechSynthesis) {
+          // Use browser's built-in speech synthesis
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.rate = 0.9;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+          
+          // Get a female voice if available
+          const voices = speechSynthesis.getVoices();
+          const femaleVoice = voices.find(voice => 
+            voice.name.includes('Female') || 
+            voice.name.includes('Samantha') ||
+            voice.name.includes('Karen') ||
+            voice.gender === 'female'
+          );
+          
+          if (femaleVoice) {
+            utterance.voice = femaleVoice;
+          }
+          
+          utterance.onend = () => {
+            setIsAISpeaking(false);
+            setIsAudioPlaying(false);
+            setCurrentAudioUrl(null);
+          };
+          
+          speechSynthesis.speak(utterance);
+        } else if (data.audioUrl) {
+          // Use Google TTS audio
+          const audio = new Audio(data.audioUrl);
+          audio.onended = () => {
+            setIsAISpeaking(false);
+            setIsAudioPlaying(false);
+            setCurrentAudioUrl(null);
+          };
+          audio.play();
+        }
+      } else {
+        throw new Error('TTS API failed');
       }
-      
-      utterance.onend = () => {
-        setIsAISpeaking(false);
-        setIsAudioPlaying(false);
-        setCurrentAudioUrl(null);
-      };
-      
-      speechSynthesis.speak(utterance);
-    } else {
+    } catch (error) {
+      console.error('TTS error, using fallback:', error);
       // Fallback to simulation
-      console.log('Playing AI Audio:', { audioUrl, text });
       const duration = Math.random() * 2000 + 3000;
       setTimeout(() => {
         setIsAISpeaking(false);
         setIsAudioPlaying(false);
         setCurrentAudioUrl(null);
       }, duration);
-    }
-  };
-
-  // Google Speech-to-Text API call
-  const callGoogleSpeechToText = async (audioBlob: Blob): Promise<string> => {
-    try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob);
-      
-      const response = await fetch('/api/speech-to-text', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}`,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Speech-to-text API failed');
-      }
-      
-      const data = await response.json();
-      return data.transcript || 'Could not transcribe audio';
-    } catch (error) {
-      console.error('Google Speech-to-Text error:', error);
-      // Fallback to mock response
-      return MOCK_USER_RESPONSES[currentQuestionIndex] || "I understand the question.";
     }
   };
 
@@ -399,9 +434,24 @@ function VoiceInterviewContent() {
 
   // Update progress
   useEffect(() => {
-    const progress = (questionsAnswered / MOCK_AI_QUESTIONS.length) * 100;
+    const progress = totalQuestions > 0 ? (questionsAnswered / totalQuestions) * 100 : 0;
     setInterviewProgress(progress);
-  }, [questionsAnswered]);
+  }, [questionsAnswered, totalQuestions]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+      }
+      if (socket) {
+        socket.disconnect();
+      }
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(console.error);
+      }
+    };
+  }, [mediaStream, socket]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -428,44 +478,29 @@ function VoiceInterviewContent() {
   };
 
   const startInterview = async () => {
-    console.log('Initialize Interview Payload:', MOCK_INTERVIEW_PAYLOAD);
+    console.log('🚀 Starting interview...');
     
-    setInterviewStarted(true);
-    
-    // Start with first AI question
-    askNextQuestion();
-  };
-
-  const askNextQuestion = () => {
-    if (currentQuestionIndex >= MOCK_AI_QUESTIONS.length) {
-      handleEndInterview();
+    if (!socket || !isConnected) {
+      setWarningMessage('Please wait for WebSocket connection before starting the interview.');
+      setShowWarning(true);
       return;
     }
 
-    const question = MOCK_AI_QUESTIONS[currentQuestionIndex];
-    const aiMessage: Message = {
-      id: `ai_${Date.now()}`,
-      type: 'ai',
-      content: question.text,
-      timestamp: new Date(),
-      audioUrl: question.audioUrl
-    };
-
-    setMessages(prev => [...prev, aiMessage]);
+    const interviewPayload = buildInterviewPayload();
+    console.log('📤 Sending interview initialization payload:', interviewPayload);
     
-    // Play AI audio
-    playAIAudio(question.audioUrl, question.text);
-
-    // Simulate WebSocket message
-    if (fakeWebSocket) {
-      const wsMessage = {
-        type: "ai_question",
-        content: question.text,
-        questionNumber: currentQuestionIndex + 1,
-        totalQuestions: MOCK_AI_QUESTIONS.length
-      };
-      fakeWebSocket.send(JSON.stringify(wsMessage));
-    }
+    // Send initialization via WebSocket
+    socket.emit('init-interview', interviewPayload);
+    
+    setInterviewStarted(true);
+    
+    const systemMessage: Message = {
+      id: `system_start_${Date.now()}`,
+      type: 'system',
+      content: '🎯 Interview session starting...',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, systemMessage]);
   };
 
   const startListening = async () => {
@@ -475,6 +510,7 @@ function VoiceInterviewContent() {
       return;
     }
 
+    console.log('🎤 Starting speech recognition...');
     setIsListening(true);
     setTranscript('Listening...');
 
@@ -487,32 +523,14 @@ function VoiceInterviewContent() {
         setTranscript('Speech recognition not available. Please try again.');
       }
     } else {
-      // Fallback to mock response
-      setTimeout(async () => {
-        const mockResponse = MOCK_USER_RESPONSES[currentQuestionIndex] || "I understand the question.";
-        setTranscript(mockResponse);
-        
-        const userMessage: Message = {
-          id: `user_${Date.now()}`,
-          type: 'user',
-          content: mockResponse,
-          timestamp: new Date()
-        };
-
-        setMessages(prev => [...prev, userMessage]);
-        setQuestionsAnswered(prev => prev + 1);
-        setCurrentQuestionIndex(prev => prev + 1);
-
-        setTimeout(() => {
-          askNextQuestion();
-        }, 2000);
-        
-        setIsListening(false);
-      }, 2000);
+      console.warn('Speech recognition not available, using fallback');
+      setIsListening(false);
+      setTranscript('Speech recognition not supported in this browser.');
     }
   };
 
   const stopListening = () => {
+    console.log('🛑 Stopping speech recognition...');
     if (recognition) {
       recognition.stop();
     }
@@ -521,8 +539,14 @@ function VoiceInterviewContent() {
   };
 
   const runCode = async () => {
-    if (!code.trim()) return;
+    if (!code.trim()) {
+      setWarningMessage('Please write some code before running.');
+      setShowWarning(true);
+      return;
+    }
 
+    console.log('💻 Executing code...');
+    
     const codeMessage: Message = {
       id: `code_${Date.now()}`,
       type: 'user',
@@ -532,63 +556,114 @@ function VoiceInterviewContent() {
 
     setMessages(prev => [...prev, codeMessage]);
 
-    // Simulate code execution
-    setTimeout(() => {
-      const resultMessage: Message = {
-        id: `result_${Date.now()}`,
-        type: 'ai',
-        content: `Code executed successfully! Output: "Hello World"\n\nGood job! Your solution looks clean and efficient.`,
+    try {
+      const response = await fetch(`${API_URL}/interview/code/execute`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({
+          sessionId: sessionId,
+          code: code,
+          language: language.toUpperCase(),
+          codeContext: {
+            questionId: `code_${Date.now()}`,
+            question: `Code execution for ${language}`
+          }
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Code execution result:', result);
+        
+        const resultMessage: Message = {
+          id: `result_${Date.now()}`,
+          type: 'ai',
+          content: `Code executed successfully!\n\nOutput: ${result.output || 'No output'}\n\n${result.feedback || 'Good job!'}`,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, resultMessage]);
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Code execution error:', error);
+      const errorMessage: Message = {
+        id: `error_${Date.now()}`,
+        type: 'system',
+        content: `❌ Code execution failed: ${error.message}`,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, resultMessage]);
-    }, 1000);
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const handleEndInterview = async () => {
-    const completionPayload = {
-      sessionId: MOCK_INTERVIEW_PAYLOAD.context.sessionId,
-      user: MOCK_INTERVIEW_PAYLOAD.user,
-      configuration: MOCK_INTERVIEW_PAYLOAD.configuration,
-      results: {
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-        totalTimeSpent: (parseInt(duration) * 60) - timeRemaining,
-        questionsAnswered,
-        totalQuestions: MOCK_AI_QUESTIONS.length,
-        finalScores: {
-          overall: 85,
-          technical: 88,
-          communication: 82,
-          problemSolving: 87
-        }
-      },
-      conversationHistory: messages.map(msg => ({
-        id: msg.id,
-        type: msg.type,
-        content: msg.content,
-        timestamp: msg.timestamp.toISOString()
-      })),
-      codeSubmissions: hasCodeEditor ? [{
-        questionId: 'coding_challenge',
-        question: 'Write a function to reverse a string',
-        code,
-        language,
-        submittedAt: new Date().toISOString()
-      }] : [],
-      violations: [],
-      aiAnalysis: {
-        strengths: ["Good communication skills", "Clear explanations", "Solid technical knowledge"],
-        improvements: ["Could provide more specific examples", "Practice system design concepts"],
-        detailedFeedback: {
-          communication: "You communicated clearly and confidently throughout the interview.",
-          technical: "Strong technical foundation with good problem-solving approach.",
-          problemSolving: "Demonstrated logical thinking and systematic approach to problems."
+    console.log('🏁 Ending interview...');
+    
+    try {
+      // Send end interview request to backend
+      const endPayload = {
+        sessionId: sessionId,
+        user: buildInterviewPayload().user,
+        configuration: buildInterviewPayload().configuration,
+        results: {
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          totalTimeSpent: (parseInt(duration) * 60) - timeRemaining,
+          questionsAnswered: questionsAnswered,
+          totalQuestions: totalQuestions,
+          finalScores: {
+            overall: 0, // Will be calculated by backend
+            technical: 0,
+            communication: 0,
+            problemSolving: 0
+          }
         },
-        recommendations: ["Practice more system design questions", "Work on providing concrete examples"]
-      }
-    };
+        conversationHistory: messages.map(msg => ({
+          id: msg.id,
+          type: msg.type,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString()
+        })),
+        codeSubmissions: hasCodeEditor ? [{
+          questionId: 'final_code',
+          question: 'Code submission',
+          code: code,
+          language: language,
+          submittedAt: new Date().toISOString()
+        }] : [],
+        violations: [],
+        aiAnalysis: {
+          strengths: [],
+          improvements: [],
+          detailedFeedback: {},
+          recommendations: []
+        }
+      };
 
-    console.log('Complete Interview Payload:', completionPayload);
+      console.log('📤 Sending end interview payload:', endPayload);
+      
+      const response = await fetch(`${API_URL}/interview/end`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify(endPayload)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Interview ended successfully:', result);
+      } else {
+        console.error('❌ Failed to end interview:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error ending interview:', error);
+    }
 
     // Cleanup media streams
     if (mediaStream) {
@@ -596,7 +671,22 @@ function VoiceInterviewContent() {
       setMediaStream(null);
     }
 
+    // Disconnect WebSocket
+    if (socket) {
+      socket.disconnect();
+    }
+
+    // Exit fullscreen
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch (error) {
+        console.error('Error exiting fullscreen:', error);
+      }
+    }
+    
     setInterviewStarted(false);
+    setIsFullscreen(false);
     router.push('/learner/interview/results');
   };
 
@@ -609,14 +699,33 @@ function VoiceInterviewContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `interview_transcript_${new Date().toISOString().split('T')[0]}.txt`;
+    a.download = `interview_transcript_${sessionId || 'session'}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const replayAIMessage = (message: Message) => {
-    if (message.audioUrl) {
-      playAIAudio(message.audioUrl, message.content);
+    if (message.content) {
+      playAIAudio('', message.content);
+    }
+  };
+
+  const getLanguageOptions = () => {
+    switch (category) {
+      case 'frontend':
+        return ['javascript', 'typescript', 'html', 'css'];
+      case 'backend':
+        return ['javascript', 'python', 'java', 'go'];
+      case 'fullstack':
+        return ['javascript', 'typescript', 'python', 'java'];
+      case 'sql':
+        return ['sql'];
+      case 'data-analyst':
+        return ['python', 'r', 'sql'];
+      case 'aws':
+        return ['yaml', 'json', 'bash'];
+      default:
+        return ['javascript', 'python', 'java'];
     }
   };
 
@@ -661,8 +770,23 @@ function VoiceInterviewContent() {
                     style={{ width: `${interviewProgress}%` }}
                   />
                 </div>
-                <span className="text-sm text-[#00FFB2]">{questionsAnswered}/{MOCK_AI_QUESTIONS.length}</span>
+                <span className="text-sm text-[#00FFB2]">{questionsAnswered}/{totalQuestions}</span>
               </div>
+              <div className="flex items-center space-x-2">
+                {isConnected ? (
+                  <Wifi size={16} className="text-green-400" />
+                ) : (
+                  <WifiOff size={16} className="text-red-400" />
+                )}
+                <span className="text-xs text-gray-400">
+                  {isConnected ? 'Connected' : 'Connecting...'}
+                </span>
+              </div>
+              {sessionId && (
+                <div className="text-xs text-gray-500">
+                  Session: {sessionId.slice(-8)}
+                </div>
+              )}
             </div>
             
             <div className="flex items-center space-x-4">
@@ -694,7 +818,7 @@ function VoiceInterviewContent() {
                   className="p-2 rounded-full bg-[#00FFB2]/20 text-[#00FFB2] hover:bg-[#00FFB2]/30"
                   title={showCodeEditor ? "Hide Code Editor" : "Show Code Editor"}
                 >
-                  {showCodeEditor ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                  {showCodeEditor ? <Minimize2 size={20} /> : <Code size={20} />}
                 </button>
               )}
               
@@ -729,7 +853,7 @@ function VoiceInterviewContent() {
                   </div>
                   {isListening && (
                     <div className="absolute top-2 right-2 bg-red-500 px-2 py-1 rounded text-xs animate-pulse">
-                      Recording...
+                      🎤 Recording...
                     </div>
                   )}
                 </div>
@@ -742,7 +866,7 @@ function VoiceInterviewContent() {
                   </div>
                   {isAudioPlaying && (
                     <div className="absolute top-2 right-2 bg-[#00FFB2] px-2 py-1 rounded text-xs text-black">
-                      Speaking...
+                      🔊 Speaking...
                     </div>
                   )}
                 </div>
@@ -755,17 +879,21 @@ function VoiceInterviewContent() {
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : message.type === 'system' ? 'justify-center' : 'justify-start'}`}
                   >
                     <div className={`max-w-[80%] p-3 rounded-lg ${
                       message.type === 'user' 
                         ? 'bg-[#00FFB2] text-black' 
+                        : message.type === 'system'
+                        ? 'bg-yellow-500/20 text-yellow-400 text-center'
                         : 'bg-[#1A1A1A] text-white'
                     }`}>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center space-x-2">
                           {message.type === 'user' ? (
                             <User size={16} />
+                          ) : message.type === 'system' ? (
+                            <Bot size={16} className="text-yellow-400" />
                           ) : (
                             <Bot size={16} className="text-[#00FFB2]" />
                           )}
@@ -773,7 +901,7 @@ function VoiceInterviewContent() {
                             {message.timestamp.toLocaleTimeString()}
                           </span>
                         </div>
-                        {message.type === 'ai' && message.audioUrl && (
+                        {message.type === 'ai' && (
                           <button
                             onClick={() => replayAIMessage(message)}
                             className="text-[#00FFB2] hover:text-[#00CC8E] ml-2"
@@ -803,7 +931,7 @@ function VoiceInterviewContent() {
                   <div className="flex items-center justify-center space-x-4">
                     <button
                       onClick={isListening ? stopListening : startListening}
-                      disabled={!interviewStarted || isAISpeaking}
+                      disabled={!interviewStarted || isAISpeaking || !isConnected}
                       className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
                         isListening 
                           ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
@@ -819,7 +947,10 @@ function VoiceInterviewContent() {
                     
                     <div className="text-center">
                       <div className="text-sm text-gray-400">
-                        {isListening ? 'Recording... Click to stop' : 'Click to speak'}
+                        {!isConnected ? 'Connecting to server...' :
+                         !interviewStarted ? 'Start interview to begin' :
+                         isAISpeaking ? 'AI is speaking...' :
+                         isListening ? 'Recording... Click to stop' : 'Click to speak'}
                       </div>
                       {!isMicOn && (
                         <div className="text-xs text-red-400 mt-1">
@@ -855,10 +986,11 @@ function VoiceInterviewContent() {
                       onChange={(e) => setLanguage(e.target.value)}
                       className="bg-[#1A1A1A] border border-gray-600 rounded px-3 py-1 text-sm"
                     >
-                      <option value="javascript">JavaScript</option>
-                      <option value="python">Python</option>
-                      <option value="java">Java</option>
-                      <option value="sql">SQL</option>
+                      {getLanguageOptions().map(lang => (
+                        <option key={lang} value={lang}>
+                          {lang.toUpperCase()}
+                        </option>
+                      ))}
                     </select>
                     <button
                       onClick={runCode}
@@ -927,20 +1059,41 @@ function VoiceInterviewContent() {
               <h2 className="text-2xl font-bold mb-4">Voice Interview Ready</h2>
               <p className="text-gray-400 mb-6">
                 Your {category} voice interview at {level} level is about to begin. 
-                Duration: {duration} minutes with {MOCK_AI_QUESTIONS.length} questions.
+                Duration: {duration} minutes.
               </p>
+              
+              {/* Connection Status */}
+              <div className={`p-4 rounded-lg border mb-6 ${
+                isConnected 
+                  ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+                  : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+              }`}>
+                <div className="flex items-center justify-center space-x-2">
+                  {isConnected ? (
+                    <Wifi size={16} className="text-green-400" />
+                  ) : (
+                    <WifiOff size={16} className="text-yellow-400" />
+                  )}
+                  <span className="text-sm">
+                    {isConnected ? '✅ Connected to interview server' : '⏳ Connecting to server...'}
+                  </span>
+                </div>
+              </div>
+              
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
                 <p className="text-blue-400 text-sm">
                   <strong>Voice Interview:</strong> The AI will ask questions with voice. 
                   Click the microphone button to respond with your voice.
                 </p>
               </div>
+              
               <button
                 onClick={startInterview}
-                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto"
+                disabled={!isConnected}
+                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Play className="h-5 w-5 mr-2" />
-                Start Voice Interview
+                {isConnected ? 'Start Voice Interview' : 'Connecting...'}
               </button>
             </div>
           </div>
@@ -952,7 +1105,14 @@ function VoiceInterviewContent() {
 
 export default function VoiceInterviewPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00FFB2] mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading interview session...</p>
+        </div>
+      </div>
+    }>
       <VoiceInterviewContent />
     </Suspense>
   );
