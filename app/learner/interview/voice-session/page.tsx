@@ -29,47 +29,11 @@ import CodeEditor from '@/components/CodeEditor';
 import AIAvatar from '@/components/AIAvatar';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
+import { io, Socket } from 'socket.io-client';
 
-// Mock payload structure
-const MOCK_INTERVIEW_PAYLOAD = {
-  user: {
-    id: "user123",
-    name: "John Doe",
-    email: "john@example.com",
-    role: "user",
-    experience: "3 years in full-stack development",
-    skills: ["JavaScript", "React", "Node.js", "Python", "SQL"],
-    goals: "Land a senior developer role",
-    education: [
-      { degree: "B.Tech in Computer Science", institution: "MIT", year: 2020 }
-    ],
-    workExperience: [
-      { 
-        title: "Full-Stack Developer", 
-        company: "Tech Innovators Inc.", 
-        duration: "Jan 2021 - Present", 
-        description: "Built scalable web apps using React, Node.js, MongoDB."
-      }
-    ],
-    profileCompletion: 85
-  },
-  configuration: {
-    level: "mid",
-    category: "fullstack", 
-    duration: 30,
-    hasCodeEditor: true,
-    language: "javascript",
-    interviewType: "voice+code",
-    questionsLimit: 10
-  },
-  context: {
-    sessionId: "session_123456",
-    startTime: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    isFreeInterview: true
-  }
-};
+// Your backend API URL
+const API_URL = 'https://1facc094d653.ngrok-free.app';
+const WEBSOCKET_URL = 'http://localhost:3002';
 
 // Mock AI Questions
 const MOCK_AI_QUESTIONS = [
@@ -148,23 +112,106 @@ function VoiceInterviewContent() {
   const [recognition, setRecognition] = useState<any>(null);
   const [speechSynthesis, setSpeechSynthesis] = useState<any>(null);
 
-  // Fake WebSocket simulation
-  const [fakeWebSocket, setFakeWebSocket] = useState<any>(null);
+  // Real WebSocket connection
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [sessionId, setSessionId] = useState<string>('');
 
-  // Initialize fake WebSocket
+  // Initialize real WebSocket
   useEffect(() => {
-    if (interviewStarted) {
-      const mockWebSocket = {
-        send: (data: string) => {
-          console.log('Fake WebSocket Send:', JSON.parse(data));
-        },
-        close: () => {
-          console.log('Fake WebSocket Closed');
-        }
-      };
-      setFakeWebSocket(mockWebSocket);
+    const socketConnection = io(WEBSOCKET_URL);
+    
+    socketConnection.on('connect', () => {
+      console.log('Connected to WebSocket server');
+      setIsConnected(true);
+      setSocket(socketConnection);
+    });
+
+    socketConnection.on('disconnect', () => {
+      console.log('Disconnected from WebSocket server');
+      setIsConnected(false);
+    });
+
+    socketConnection.on('welcome', (data) => {
+      console.log('Welcome message:', data);
+    });
+
+    socketConnection.on('init-interview-response', (data) => {
+      if (data.success) {
+        setSessionId(data.sessionId);
+        console.log('Interview initialized:', data);
+        
+        // Add AI welcome message
+        const welcomeMessage: Message = {
+          id: `ai_welcome_${Date.now()}`,
+          type: 'ai',
+          content: data.message,
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+        
+        // Play welcome audio
+        playAIAudio('', data.message);
+      }
+    });
+
+    socketConnection.on('question-response', (data) => {
+      if (data.success) {
+        const aiMessage: Message = {
+          id: `ai_${Date.now()}`,
+          type: 'ai',
+          content: data.response,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        playAIAudio('', data.response);
+      }
+    });
+
+    return () => {
+      socketConnection.disconnect();
+    };
+  }, []);
+
+  // Build interview payload from user data
+  const buildInterviewPayload = () => {
+    return {
+      user: {
+        id: user?._id || "user123",
+        name: user?.name || "John Doe",
+        email: user?.email || "john@example.com",
+        role: user?.role || "user",
+        experience: user?.experience || "3 years in full-stack development",
+        skills: user?.tech_stack ? user.tech_stack.split(',') : ["JavaScript", "React", "Node.js", "Python", "SQL"],
+        goals: user?.goals || "Land a senior developer role",
+        education: user?.education ? JSON.parse(user.education) : [
+          { degree: "B.Tech in Computer Science", institution: "IIT Delhi", year: 2019 }
+        ],
+        workExperience: [
+          {
+            title: "Full-Stack Developer",
+            company: "TechNova Solutions",
+            duration: "Jan 2021 - Present",
+            description: "Led development of scalable web applications using React and Node.js."
+          }
+        ],
+        profileCompletion: user?.profile_completion || 85
+      },
+      configuration: {
+        level: level || "mid",
+        category: category || "fullstack",
+        duration: parseInt(duration) || 30,
+        hasCodeEditor: hasCodeEditor,
+        language: language || "javascript"
+      },
+      context: {
+        sessionId: `session_${Date.now()}_${user?._id}`,
+        startTime: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        isFreeInterview: true
+      }
     }
-  }, [interviewStarted]);
 
   // Initialize Google Speech Recognition
   useEffect(() => {
@@ -190,23 +237,15 @@ function VoiceInterviewContent() {
 
         setMessages(prev => [...prev, userMessage]);
         
-        // Simulate WebSocket response
-        if (fakeWebSocket) {
-          const wsMessage = {
-            type: "user_answer",
-            content: transcript,
-            questionNumber: currentQuestionIndex + 1
-          };
-          fakeWebSocket.send(JSON.stringify(wsMessage));
+        // Send to real WebSocket
+        if (socket && sessionId) {
+          socket.emit('question', {
+            sessionId: sessionId,
+            message: transcript
+          });
         }
 
         setQuestionsAnswered(prev => prev + 1);
-        setCurrentQuestionIndex(prev => prev + 1);
-
-        // Wait a moment then ask next question
-        setTimeout(() => {
-          askNextQuestion();
-        }, 2000);
       };
       
       recognitionInstance.onerror = (event: any) => {
@@ -375,45 +414,21 @@ function VoiceInterviewContent() {
   };
 
   const startInterview = async () => {
-    console.log('Initialize Interview Payload:', MOCK_INTERVIEW_PAYLOAD);
-    
-    setInterviewStarted(true);
-    
-    // Start with first AI question
-    askNextQuestion();
-  };
-
-  const askNextQuestion = () => {
-    if (currentQuestionIndex >= MOCK_AI_QUESTIONS.length) {
-      handleEndInterview();
+    if (!socket || !isConnected) {
+      setWarningMessage('WebSocket connection not established. Please try again.');
+      setShowWarning(true);
       return;
     }
 
-    const question = MOCK_AI_QUESTIONS[currentQuestionIndex];
-    const aiMessage: Message = {
-      id: `ai_${Date.now()}`,
-      type: 'ai',
-      content: question.text,
-      timestamp: new Date(),
-      audioUrl: question.audioUrl
-    };
-
-    setMessages(prev => [...prev, aiMessage]);
+    const payload = buildInterviewPayload();
+    console.log('Initialize Interview Payload:', payload);
     
-    // Play AI audio
-    playAIAudio(question.audioUrl, question.text);
-
-    // Simulate WebSocket message
-    if (fakeWebSocket) {
-      const wsMessage = {
-        type: "ai_question",
-        content: question.text,
-        questionNumber: currentQuestionIndex + 1,
-        totalQuestions: MOCK_AI_QUESTIONS.length
-      };
-      fakeWebSocket.send(JSON.stringify(wsMessage));
-    }
+    setInterviewStarted(true);
+    
+    // Send initialization to WebSocket
+    socket.emit('init-interview', payload);
   };
+
 
   const startListening = async () => {
     if (!isMicOn) {
@@ -448,11 +463,14 @@ function VoiceInterviewContent() {
 
         setMessages(prev => [...prev, userMessage]);
         setQuestionsAnswered(prev => prev + 1);
-        setCurrentQuestionIndex(prev => prev + 1);
 
-        setTimeout(() => {
-          askNextQuestion();
-        }, 2000);
+        // Send to WebSocket
+        if (socket && sessionId) {
+          socket.emit('question', {
+            sessionId: sessionId,
+            message: mockResponse
+          });
+        }
         
         setIsListening(false);
       }, 2000);
@@ -470,77 +488,125 @@ function VoiceInterviewContent() {
   const runCode = async () => {
     if (!code.trim()) return;
 
-    const codeMessage: Message = {
-      id: `code_${Date.now()}`,
-      type: 'user',
-      content: `Code submitted:\n\`\`\`${language}\n${code}\n\`\`\``,
-      timestamp: new Date()
-    };
+    try {
+      // Call your backend API for code execution
+      const response = await fetch(`${API_URL}/interview/code/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: sessionId,
+          code: code,
+          language: language.toUpperCase(),
+          codeContext: {
+            questionId: `code_${Date.now()}`,
+            question: "Code execution challenge"
+          }
+        })
+      });
 
-    setMessages(prev => [...prev, codeMessage]);
+      const result = await response.json();
+      
+      const codeMessage: Message = {
+        id: `code_${Date.now()}`,
+        type: 'user',
+        content: `Code submitted:\n\`\`\`${language}\n${code}\n\`\`\``,
+        timestamp: new Date()
+      };
 
-    // Simulate code execution
-    setTimeout(() => {
+      setMessages(prev => [...prev, codeMessage]);
+
+      // Show execution result
       const resultMessage: Message = {
         id: `result_${Date.now()}`,
         type: 'ai',
-        content: `Code executed successfully! Output: "Hello World"\n\nGood job! Your solution looks clean and efficient.`,
+        content: result.success ? 
+          `Code executed successfully!\n\nOutput: ${result.output || 'No output'}\n\n${result.feedback || 'Good job!'}` :
+          `Code execution failed: ${result.message || 'Unknown error'}`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, resultMessage]);
-    }, 1000);
+      
+    } catch (error) {
+      console.error('Code execution error:', error);
+      const errorMessage: Message = {
+        id: `error_${Date.now()}`,
+        type: 'ai',
+        content: 'Sorry, there was an error executing your code. Please try again.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const handleEndInterview = async () => {
-    const completionPayload = {
-      sessionId: MOCK_INTERVIEW_PAYLOAD.context.sessionId,
-      user: MOCK_INTERVIEW_PAYLOAD.user,
-      configuration: MOCK_INTERVIEW_PAYLOAD.configuration,
-      results: {
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-        totalTimeSpent: (parseInt(duration) * 60) - timeRemaining,
-        questionsAnswered,
-        totalQuestions: MOCK_AI_QUESTIONS.length,
-        finalScores: {
-          overall: 85,
-          technical: 88,
-          communication: 82,
-          problemSolving: 87
-        }
-      },
-      conversationHistory: messages.map(msg => ({
-        id: msg.id,
-        type: msg.type,
-        content: msg.content,
-        timestamp: msg.timestamp.toISOString()
-      })),
-      codeSubmissions: hasCodeEditor ? [{
-        questionId: 'coding_challenge',
-        question: 'Write a function to reverse a string',
-        code,
-        language,
-        submittedAt: new Date().toISOString()
-      }] : [],
-      violations: [],
-      aiAnalysis: {
-        strengths: ["Good communication skills", "Clear explanations", "Solid technical knowledge"],
-        improvements: ["Could provide more specific examples", "Practice system design concepts"],
-        detailedFeedback: {
-          communication: "You communicated clearly and confidently throughout the interview.",
-          technical: "Strong technical foundation with good problem-solving approach.",
-          problemSolving: "Demonstrated logical thinking and systematic approach to problems."
+    try {
+      // Call your backend API to end interview
+      const payload = buildInterviewPayload();
+      const completionPayload = {
+        sessionId: sessionId,
+        user: payload.user,
+        configuration: payload.configuration,
+        results: {
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          totalTimeSpent: (parseInt(duration) * 60) - timeRemaining,
+          questionsAnswered,
+          totalQuestions: messages.filter(m => m.type === 'ai').length,
+          finalScores: {
+            overall: 0, // Will be calculated by backend
+            technical: 0,
+            communication: 0,
+            problemSolving: 0
+          }
         },
-        recommendations: ["Practice more system design questions", "Work on providing concrete examples"]
-      }
-    };
+        conversationHistory: messages.map(msg => ({
+          id: msg.id,
+          type: msg.type,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString()
+        })),
+        codeSubmissions: hasCodeEditor ? [{
+          questionId: 'coding_challenge',
+          question: 'Code execution challenge',
+          code,
+          language,
+          submittedAt: new Date().toISOString()
+        }] : [],
+        violations: [],
+        aiAnalysis: {
+          strengths: [],
+          improvements: [],
+          detailedFeedback: {},
+          recommendations: []
+        }
+      };
 
-    console.log('Complete Interview Payload:', completionPayload);
+      const response = await fetch(`${API_URL}/interview/end`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(completionPayload)
+      });
+
+      const result = await response.json();
+      console.log('Interview completion result:', result);
+      
+    } catch (error) {
+      console.error('Error ending interview:', error);
+    }
 
     // Cleanup media streams
     if (mediaStream) {
       mediaStream.getTracks().forEach(track => track.stop());
       setMediaStream(null);
+    }
+
+    // Disconnect WebSocket
+    if (socket) {
+      socket.disconnect();
     }
 
     setInterviewStarted(false);
@@ -879,15 +945,17 @@ function VoiceInterviewContent() {
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
                 <p className="text-blue-400 text-sm">
                   <strong>Voice Interview:</strong> The AI will ask questions with voice. 
-                  Click the microphone button to respond with your voice.
+                  Click the microphone button to respond with your voice.<br/>
+                  <strong>Status:</strong> {isConnected ? '🟢 Connected' : '🔴 Connecting...'}
                 </p>
               </div>
               <button
                 onClick={startInterview}
-                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto"
+                disabled={!isConnected}
+                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Play className="h-5 w-5 mr-2" />
-                Start Voice Interview
+                {isConnected ? 'Start Voice Interview' : 'Connecting...'}
               </button>
             </div>
           </div>
