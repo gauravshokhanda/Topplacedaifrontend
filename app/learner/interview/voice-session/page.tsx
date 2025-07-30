@@ -211,7 +211,8 @@ function VoiceInterviewContent() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         isFreeInterview: true
       }
-    }
+    };
+  };
 
   // Initialize Google Speech Recognition
   useEffect(() => {
@@ -429,6 +430,21 @@ function VoiceInterviewContent() {
     socket.emit('init-interview', payload);
   };
 
+  const askNextQuestion = () => {
+    if (currentQuestionIndex < MOCK_AI_QUESTIONS.length) {
+      const question = MOCK_AI_QUESTIONS[currentQuestionIndex];
+      const aiMessage: Message = {
+        id: `ai_${Date.now()}`,
+        type: 'ai',
+        content: question.text,
+        timestamp: new Date(),
+        audioUrl: question.audioUrl
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      playAIAudio(question.audioUrl, question.text);
+    }
+  };
 
   const startListening = async () => {
     if (!isMicOn) {
@@ -463,14 +479,11 @@ function VoiceInterviewContent() {
 
         setMessages(prev => [...prev, userMessage]);
         setQuestionsAnswered(prev => prev + 1);
+        setCurrentQuestionIndex(prev => prev + 1);
 
-        // Send to WebSocket
-        if (socket && sessionId) {
-          socket.emit('question', {
-            sessionId: sessionId,
-            message: mockResponse
-          });
-        }
+        setTimeout(() => {
+          askNextQuestion();
+        }, 2000);
         
         setIsListening(false);
       }, 2000);
@@ -488,125 +501,77 @@ function VoiceInterviewContent() {
   const runCode = async () => {
     if (!code.trim()) return;
 
-    try {
-      // Call your backend API for code execution
-      const response = await fetch(`${API_URL}/interview/code/execute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          code: code,
-          language: language.toUpperCase(),
-          codeContext: {
-            questionId: `code_${Date.now()}`,
-            question: "Code execution challenge"
-          }
-        })
-      });
+    const codeMessage: Message = {
+      id: `code_${Date.now()}`,
+      type: 'user',
+      content: `Code submitted:\n\`\`\`${language}\n${code}\n\`\`\``,
+      timestamp: new Date()
+    };
 
-      const result = await response.json();
-      
-      const codeMessage: Message = {
-        id: `code_${Date.now()}`,
-        type: 'user',
-        content: `Code submitted:\n\`\`\`${language}\n${code}\n\`\`\``,
-        timestamp: new Date()
-      };
+    setMessages(prev => [...prev, codeMessage]);
 
-      setMessages(prev => [...prev, codeMessage]);
-
-      // Show execution result
+    // Simulate code execution
+    setTimeout(() => {
       const resultMessage: Message = {
         id: `result_${Date.now()}`,
         type: 'ai',
-        content: result.success ? 
-          `Code executed successfully!\n\nOutput: ${result.output || 'No output'}\n\n${result.feedback || 'Good job!'}` :
-          `Code execution failed: ${result.message || 'Unknown error'}`,
+        content: `Code executed successfully! Output: "Hello World"\n\nGood job! Your solution looks clean and efficient.`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, resultMessage]);
-      
-    } catch (error) {
-      console.error('Code execution error:', error);
-      const errorMessage: Message = {
-        id: `error_${Date.now()}`,
-        type: 'ai',
-        content: 'Sorry, there was an error executing your code. Please try again.',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    }
+    }, 1000);
   };
 
   const handleEndInterview = async () => {
-    try {
-      // Call your backend API to end interview
-      const payload = buildInterviewPayload();
-      const completionPayload = {
-        sessionId: sessionId,
-        user: payload.user,
-        configuration: payload.configuration,
-        results: {
-          status: 'completed',
-          completedAt: new Date().toISOString(),
-          totalTimeSpent: (parseInt(duration) * 60) - timeRemaining,
-          questionsAnswered,
-          totalQuestions: messages.filter(m => m.type === 'ai').length,
-          finalScores: {
-            overall: 0, // Will be calculated by backend
-            technical: 0,
-            communication: 0,
-            problemSolving: 0
-          }
-        },
-        conversationHistory: messages.map(msg => ({
-          id: msg.id,
-          type: msg.type,
-          content: msg.content,
-          timestamp: msg.timestamp.toISOString()
-        })),
-        codeSubmissions: hasCodeEditor ? [{
-          questionId: 'coding_challenge',
-          question: 'Code execution challenge',
-          code,
-          language,
-          submittedAt: new Date().toISOString()
-        }] : [],
-        violations: [],
-        aiAnalysis: {
-          strengths: [],
-          improvements: [],
-          detailedFeedback: {},
-          recommendations: []
+    const completionPayload = {
+      sessionId: buildInterviewPayload().context.sessionId,
+      user: buildInterviewPayload().user,
+      configuration: buildInterviewPayload().configuration,
+      results: {
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+        totalTimeSpent: (parseInt(duration) * 60) - timeRemaining,
+        questionsAnswered,
+        totalQuestions: MOCK_AI_QUESTIONS.length,
+        finalScores: {
+          overall: 85,
+          technical: 88,
+          communication: 82,
+          problemSolving: 87
         }
-      };
-
-      const response = await fetch(`${API_URL}/interview/end`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      },
+      conversationHistory: messages.map(msg => ({
+        id: msg.id,
+        type: msg.type,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      })),
+      codeSubmissions: hasCodeEditor ? [{
+        questionId: 'coding_challenge',
+        question: 'Write a function to reverse a string',
+        code,
+        language,
+        submittedAt: new Date().toISOString()
+      }] : [],
+      violations: [],
+      aiAnalysis: {
+        strengths: ["Good communication skills", "Clear explanations", "Solid technical knowledge"],
+        improvements: ["Could provide more specific examples", "Practice system design concepts"],
+        detailedFeedback: {
+          communication: "You communicated clearly and confidently throughout the interview.",
+          technical: "Strong technical foundation with good problem-solving approach.",
+          problemSolving: "Demonstrated logical thinking and systematic approach to problems."
         },
-        body: JSON.stringify(completionPayload)
-      });
+        recommendations: ["Practice more system design questions", "Work on providing concrete examples"]
+      }
+    };
 
-      const result = await response.json();
-      console.log('Interview completion result:', result);
-      
-    } catch (error) {
-      console.error('Error ending interview:', error);
-    }
+    console.log('Complete Interview Payload:', completionPayload);
 
     // Cleanup media streams
     if (mediaStream) {
       mediaStream.getTracks().forEach(track => track.stop());
       setMediaStream(null);
-    }
-
-    // Disconnect WebSocket
-    if (socket) {
-      socket.disconnect();
     }
 
     setInterviewStarted(false);
@@ -945,17 +910,15 @@ function VoiceInterviewContent() {
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
                 <p className="text-blue-400 text-sm">
                   <strong>Voice Interview:</strong> The AI will ask questions with voice. 
-                  Click the microphone button to respond with your voice.<br/>
-                  <strong>Status:</strong> {isConnected ? '🟢 Connected' : '🔴 Connecting...'}
+                  Click the microphone button to respond with your voice.
                 </p>
               </div>
               <button
                 onClick={startInterview}
-                disabled={!isConnected}
-                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto"
               >
                 <Play className="h-5 w-5 mr-2" />
-                {isConnected ? 'Start Voice Interview' : 'Connecting...'}
+                Start Voice Interview
               </button>
             </div>
           </div>
