@@ -579,7 +579,11 @@ function VoiceInterviewContent() {
       const errorMessage: Message = {
         id: `error_${Date.now()}`,
         type: "system",
-        content: `❌ Code execution failed: ${error.message}`,
+        content: `❌ Code execution failed: ${
+          error && typeof error === "object" && "message" in error
+            ? (error as { message: string }).message
+            : String(error)
+        }`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
