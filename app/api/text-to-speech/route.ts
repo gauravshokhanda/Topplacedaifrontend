@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
   }
 
   const elevenLabsApiKey = "sk_c3283be99f92ab217ba4ad94108760f006ff5a9cb6560834";
+  const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
 
   if (!elevenLabsApiKey) {
     console.error('ElevenLabs API key not found');
