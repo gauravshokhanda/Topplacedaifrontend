@@ -33,9 +33,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { io, Socket } from 'socket.io-client';
 
-// Your backend URLs
+// Your backend URL
 const API_URL = 'https://5ae434e8bc3e.ngrok-free.app';
-const WEBSOCKET_URL = 'wss://5ae434e8bc3e.ngrok-free.app';
 
 interface Message {
   id: string;
@@ -85,9 +84,6 @@ function VoiceInterviewContent() {
   const [recognition, setRecognition] = useState<any>(null);
   const [speechSynthesis, setSpeechSynthesis] = useState<any>(null);
 
-  // WebSocket connection
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
   const [totalQuestions, setTotalQuestions] = useState(6);
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState(0);
@@ -140,180 +136,6 @@ function VoiceInterviewContent() {
     };
   };
 
-  // Initialize WebSocket connection
-  useEffect(() => {
-    console.log('🔌 Connecting to WebSocket server...');
-    const socketConnection = io(WEBSOCKET_URL, {
-      transports: ['websocket'],
-      upgrade: false
-    });
-    
-    socketConnection.on('connect', () => {
-      console.log('✅ Connected to WebSocket server');
-      setIsConnected(true);
-      setSocket(socketConnection);
-      
-      const systemMessage: Message = {
-        id: `system_${Date.now()}`,
-        type: 'system',
-        content: '🟢 Connected to interview server',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, systemMessage]);
-    });
-
-    socketConnection.on('disconnect', () => {
-      console.log('❌ Disconnected from WebSocket server');
-      setIsConnected(false);
-      
-      const systemMessage: Message = {
-        id: `system_${Date.now()}`,
-        type: 'system',
-        content: '🔴 Disconnected from interview server',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, systemMessage]);
-    });
-
-    socketConnection.on('welcome', (data) => {
-      console.log('👋 Welcome message:', data);
-      const welcomeMessage: Message = {
-        id: `welcome_${Date.now()}`,
-        type: 'system',
-        content: `${data.message} (Client ID: ${data.clientId})`,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, welcomeMessage]);
-    });
-
-    socketConnection.on('init-interview-response', (data) => {
-      console.log('🚀 Interview initialization response:', data);
-      if (data.success) {
-        setSessionId(data.sessionId);
-        setTotalQuestions(data.firstQuestion?.totalQuestions || 6);
-        
-        const aiMessage: Message = {
-          id: `ai_init_${Date.now()}`,
-          type: 'ai',
-          content: data.message,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        
-        // Add first question if provided
-        if (data.firstQuestion) {
-          const questionMessage: Message = {
-            id: `ai_q1_${Date.now()}`,
-            type: 'ai',
-            content: data.firstQuestion.question,
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, questionMessage]);
-          setCurrentQuestionNumber(data.firstQuestion.questionNumber);
-          setCurrentQuestionId(data.firstQuestion.id);
-          
-          // Play AI audio for first question
-          playAIAudio('', data.firstQuestion.question);
-        } else {
-          // Play AI audio for welcome message
-          playAIAudio('', data.message);
-        }
-      } else {
-        const errorMessage: Message = {
-          id: `error_${Date.now()}`,
-          type: 'system',
-          content: `❌ Failed to initialize interview: ${data.message}`,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      }
-    });
-
-    socketConnection.on('question-response', (data) => {
-      console.log('💬 AI question response:', data);
-      if (data.success) {
-        const aiMessage: Message = {
-          id: `ai_${Date.now()}`,
-          type: 'ai',
-          content: data.response,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        
-        // Play AI audio
-        playAIAudio('', data.response);
-        
-        // Update question number if provided
-        if (data.questionNumber) {
-          setCurrentQuestionNumber(data.questionNumber);
-        }
-      } else {
-        const errorMessage: Message = {
-          id: `error_${Date.now()}`,
-          type: 'system',
-          content: `❌ Error: ${data.message}`,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      }
-    });
-
-    socketConnection.on('answer-feedback', (data) => {
-      console.log('📝 Answer feedback:', data);
-      if (data.success) {
-        const feedbackMessage: Message = {
-          id: `feedback_${Date.now()}`,
-          type: 'ai',
-          content: data.feedback,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, feedbackMessage]);
-        
-        // If there's a next question
-        if (data.nextQuestion) {
-          const nextQuestionMessage: Message = {
-            id: `next_q_${Date.now()}`,
-            type: 'ai',
-            content: data.nextQuestion.question,
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, nextQuestionMessage]);
-          setCurrentQuestionNumber(data.nextQuestion.questionNumber);
-          setCurrentQuestionId(data.nextQuestion.id);
-          
-          // Play AI audio for next question
-          playAIAudio('', `${data.feedback} ${data.nextQuestion.question}`);
-        } else {
-          // Play feedback audio
-          playAIAudio('', data.feedback);
-        }
-      }
-    });
-
-    socketConnection.on('interview-completed', (data) => {
-      console.log('🏁 Interview completed:', data);
-      const completionMessage: Message = {
-        id: `completion_${Date.now()}`,
-        type: 'system',
-        content: `✅ Interview completed! Final score: ${data.finalScore || 'Calculating...'}`,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, completionMessage]);
-      
-      // Auto-redirect to results after 3 seconds
-      setTimeout(() => {
-        router.push('/learner/interview/results');
-      }, 3000);
-    });
-
-    setSocket(socketConnection);
-
-    return () => {
-      console.log('🧹 Cleaning up WebSocket connection');
-      socketConnection.disconnect();
-    };
-  }, []);
-
   // Initialize Google Speech Recognition
   useEffect(() => {
     if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
@@ -339,14 +161,10 @@ function VoiceInterviewContent() {
 
         setMessages(prev => [...prev, userMessage]);
         
-        // Send answer via WebSocket using submit-answer event
-        if (socket && sessionId) {
-          console.log('📤 Sending answer via WebSocket:', transcript);
-          socket.emit('submit-answer', {
-            sessionId: sessionId,
-            questionId: currentQuestionId,
-            answer: transcript
-          });
+        // Send answer via REST API
+        if (sessionId) {
+          console.log('📤 Sending answer via REST API:', transcript);
+          sendAnswerToAPI(transcript);
         }
 
         setQuestionsAnswered(prev => prev + 1);
@@ -370,7 +188,7 @@ function VoiceInterviewContent() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       setSpeechSynthesis(window.speechSynthesis);
     }
-  }, [socket, sessionId, currentQuestionId]);
+  }, [sessionId, currentQuestionId]);
 
   // Text-to-Speech Audio Play
   const playAIAudio = async (audioUrl: string, text: string) => {
@@ -498,14 +316,11 @@ function VoiceInterviewContent() {
       if (mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop());
       }
-      if (socket) {
-        socket.disconnect();
-      }
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(console.error);
       }
     };
-  }, [mediaStream, socket]);
+  }, [mediaStream]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -531,19 +346,59 @@ function VoiceInterviewContent() {
     }
   };
 
+  const sendAnswerToAPI = async (answer: string) => {
+    try {
+      const response = await fetch(`${API_URL}/interview/conversation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({
+          sessionId: sessionId,
+          message: answer
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Answer sent successfully:', data);
+        
+        if (data.response) {
+          const aiMessage: Message = {
+            id: `ai_${Date.now()}`,
+            type: 'ai',
+            content: data.response,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          
+          // Play AI audio response
+          playAIAudio('', data.response);
+          
+          setQuestionsAnswered(prev => prev + 1);
+        }
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Error sending answer:', error);
+      const errorMessage: Message = {
+        id: `error_${Date.now()}`,
+        type: 'system',
+        content: `❌ Failed to send answer: ${error.message}`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+  };
+
   const startInterview = async () => {
     console.log('🚀 Starting interview...');
     
-    if (!socket || !isConnected) {
-      setWarningMessage('Please wait for WebSocket connection before starting the interview.');
-      setShowWarning(true);
-      return;
-    }
-
     const interviewPayload = buildInterviewPayload();
     console.log('📤 Sending interview initialization payload:', interviewPayload);
     
-    // Method 1: REST API Approach
     try {
       const response = await fetch(`${API_URL}/interview/start`, {
         method: 'POST',
@@ -556,13 +411,13 @@ function VoiceInterviewContent() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ REST API Interview started:', data);
+        console.log('✅ Interview started:', data);
         
         setSessionId(data.sessionId);
         setTotalQuestions(data.firstQuestion?.totalQuestions || 6);
         
         const welcomeMessage: Message = {
-          id: `rest_welcome_${Date.now()}`,
+          id: `welcome_${Date.now()}`,
           type: 'ai',
           content: data.message,
           timestamp: new Date()
@@ -571,7 +426,7 @@ function VoiceInterviewContent() {
         
         if (data.firstQuestion) {
           const questionMessage: Message = {
-            id: `rest_q1_${Date.now()}`,
+            id: `q1_${Date.now()}`,
             type: 'ai',
             content: data.firstQuestion.question,
             timestamp: new Date()
@@ -580,21 +435,18 @@ function VoiceInterviewContent() {
           setCurrentQuestionNumber(data.firstQuestion.questionNumber);
           setCurrentQuestionId(data.firstQuestion.id);
           
-          playAIAudio('', `${data.message} ${data.firstQuestion.question}`);
+          playAIAudio('', data.firstQuestion.question);
         }
       } else {
-        throw new Error(`REST API failed: ${response.status}`);
+        throw new Error(`API failed: ${response.status}`);
       }
     } catch (error) {
-      console.error('❌ REST API failed, trying WebSocket:', error);
-      
-      // Method 2: WebSocket Fallback
-      socket.emit('init-interview', interviewPayload);
+      console.error('❌ Failed to start interview:', error);
       
       const systemMessage: Message = {
         id: `system_start_${Date.now()}`,
         type: 'system',
-        content: '🎯 Interview session starting via WebSocket...',
+        content: `❌ Failed to start interview: ${error.message}`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, systemMessage]);
@@ -659,7 +511,7 @@ function VoiceInterviewContent() {
     try {
       const response = await fetch(`${API_URL}/interview/code/execute`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true'
         },
@@ -707,7 +559,6 @@ function VoiceInterviewContent() {
     console.log('🏁 Ending interview...');
     
     try {
-      // Method 1: REST API End Interview
       const endPayload = {
         sessionId: sessionId,
         user: buildInterviewPayload().user,
@@ -756,7 +607,7 @@ function VoiceInterviewContent() {
       
       const response = await fetch(`${API_URL}/interview/end`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true'
         },
@@ -767,31 +618,16 @@ function VoiceInterviewContent() {
         const result = await response.json();
         console.log('✅ Interview ended successfully:', result);
       } else {
-        console.error('❌ Failed to end interview via REST API:', response.status);
-        
-        // Method 2: WebSocket Fallback
-        if (socket) {
-          socket.emit('end-interview', { sessionId: sessionId });
-        }
+        console.error('❌ Failed to end interview:', response.status);
       }
     } catch (error) {
       console.error('❌ Error ending interview:', error);
-      
-      // WebSocket fallback
-      if (socket) {
-        socket.emit('end-interview', { sessionId: sessionId });
-      }
     }
 
     // Cleanup media streams
     if (mediaStream) {
       mediaStream.getTracks().forEach(track => track.stop());
       setMediaStream(null);
-    }
-
-    // Disconnect WebSocket
-    if (socket) {
-      socket.disconnect();
     }
 
     // Exit fullscreen
@@ -889,16 +725,6 @@ function VoiceInterviewContent() {
                   />
                 </div>
                 <span className="text-sm text-[#00FFB2]">{questionsAnswered}/{totalQuestions}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                {isConnected ? (
-                  <Wifi size={16} className="text-green-400" />
-                ) : (
-                  <WifiOff size={16} className="text-red-400" />
-                )}
-                <span className="text-xs text-gray-400">
-                  {isConnected ? 'Connected' : 'Connecting...'}
-                </span>
               </div>
               {sessionId && (
                 <div className="text-xs text-gray-500">
@@ -1049,7 +875,7 @@ function VoiceInterviewContent() {
                   <div className="flex items-center justify-center space-x-4">
                     <button
                       onClick={isListening ? stopListening : startListening}
-                      disabled={!interviewStarted || isAISpeaking || !isConnected}
+                      disabled={!interviewStarted || isAISpeaking}
                       className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
                         isListening 
                           ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
@@ -1065,8 +891,7 @@ function VoiceInterviewContent() {
                     
                     <div className="text-center">
                       <div className="text-sm text-gray-400">
-                        {!isConnected ? 'Connecting to server...' :
-                         !interviewStarted ? 'Start interview to begin' :
+                        {!interviewStarted ? 'Start interview to begin' :
                          isAISpeaking ? 'AI is speaking...' :
                          isListening ? 'Recording... Click to stop' : 'Click to speak'}
                       </div>
@@ -1180,24 +1005,6 @@ function VoiceInterviewContent() {
                 Duration: {duration} minutes.
               </p>
               
-              {/* Connection Status */}
-              <div className={`p-4 rounded-lg border mb-6 ${
-                isConnected 
-                  ? 'bg-green-500/10 border-green-500/20 text-green-400' 
-                  : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-              }`}>
-                <div className="flex items-center justify-center space-x-2">
-                  {isConnected ? (
-                    <Wifi size={16} className="text-green-400" />
-                  ) : (
-                    <WifiOff size={16} className="text-yellow-400" />
-                  )}
-                  <span className="text-sm">
-                    {isConnected ? '✅ Connected to interview server' : '⏳ Connecting to server...'}
-                  </span>
-                </div>
-              </div>
-              
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
                 <p className="text-blue-400 text-sm">
                   <strong>Voice Interview:</strong> The AI will ask questions with voice. 
@@ -1207,11 +1014,10 @@ function VoiceInterviewContent() {
               
               <button
                 onClick={startInterview}
-                disabled={!isConnected}
-                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto"
               >
                 <Play className="h-5 w-5 mr-2" />
-                {isConnected ? 'Start Voice Interview' : 'Connecting...'}
+                Start Voice Interview
               </button>
             </div>
           </div>
