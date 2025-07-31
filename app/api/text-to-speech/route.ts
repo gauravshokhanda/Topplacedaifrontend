@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic';
+
 // Google Text-to-Speech API integration
 export async function POST(request: NextRequest) {
   try {
@@ -52,14 +55,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     
     if (data.audioContent) {
-      // Convert base64 audio to blob URL
-      const audioBlob = new Blob(
-        [Uint8Array.from(atob(data.audioContent), c => c.charCodeAt(0))],
-        { type: 'audio/mp3' }
-      );
-      
-      // In a real implementation, you'd save this to a file server
-      // For now, we'll return the base64 data
+      // Return the base64 audio data
       return NextResponse.json({ 
         audioContent: data.audioContent,
         audioUrl: `data:audio/mp3;base64,${data.audioContent}`,
@@ -76,7 +72,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       audioUrl: null,
       useBrowserTTS: true,
-      text: request.body 
+      text: (await request.json()).text
     });
   }
 }
