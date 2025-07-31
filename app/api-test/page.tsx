@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
-const API_URL = "https://a49161831145.ngrok-free.app";
+const API_URL = "http://localhost:3002";
 
 export default function APITestClient() {
   const [sessionId, setSessionId] = useState<string>("");
@@ -38,7 +38,7 @@ export default function APITestClient() {
         method,
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+          // "ngrok-skip-browser-warning": "true",
         },
       };
 
@@ -466,7 +466,7 @@ printFibonacci(10);`
                       />
                       <p className="text-gray-400">No API response yet</p>
                       <p className="text-gray-500 text-sm mt-2">
-                        Click "Initialize Interview" to start testing
+                        Click &quot;Initialize Interview&quot; to start testing
                       </p>
                     </div>
                   </div>
@@ -494,11 +494,11 @@ printFibonacci(10);`
                   Testing Flow:
                 </h3>
                 <ol className="text-sm text-gray-300 space-y-1">
-                  <li>1. Click "Initialize Interview" to start</li>
-                  <li>2. Use "Send Message" to test conversation</li>
-                  <li>3. Try "Execute Code" for code challenges</li>
-                  <li>4. "End Interview" to complete session</li>
-                  <li>5. "Get Results" to fetch final scores</li>
+                  <li>1. Click &quot;Initialize Interview&quot; to start</li>
+                  <li>2. Use &quot;Send Message&quot; to test conversation</li>
+                  <li>3. Try &quot;Execute Code&quot; for code challenges</li>
+                  <li>4. &quot;End Interview&quot; to complete session</li>
+                  <li>5. &quot;Get Results&quot; to fetch final scores</li>
                 </ol>
               </div>
               <div>

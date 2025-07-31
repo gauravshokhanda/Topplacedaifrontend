@@ -34,7 +34,7 @@ import { RootState } from "@/store/store";
 import { io, Socket } from "socket.io-client";
 
 // Your backend URL
-const API_URL = "https://a49161831145.ngrok-free.app";
+const API_URL = "http://localhost:3002";
 
 interface Message {
   id: string;
@@ -370,7 +370,7 @@ function VoiceInterviewContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+          // "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           sessionId: sessionId,
@@ -429,7 +429,7 @@ function VoiceInterviewContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+          // "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify(interviewPayload),
       });
@@ -542,7 +542,7 @@ function VoiceInterviewContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+          // "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           sessionId: sessionId,
@@ -651,7 +651,7 @@ function VoiceInterviewContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+          // "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify(endPayload),
       });
