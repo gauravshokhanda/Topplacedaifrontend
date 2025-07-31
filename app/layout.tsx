@@ -1,14 +1,7 @@
 import "./globals.css";
 import { ReduxProvider } from "@/store/provider";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Top placed AI | AI-Powered Career Development Platform",
@@ -27,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-black text-white antialiased`}>
+      <body className="bg-black text-white antialiased">
         <div className="min-h-screen">
           <Toaster richColors position="top-center" />
           <ReduxProvider>{children}</ReduxProvider>

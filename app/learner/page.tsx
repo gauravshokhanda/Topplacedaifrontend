@@ -181,7 +181,7 @@ export default function LearnerDashboard() {
                 </div>
 
                 <Link
-                  href="/learner/interview"
+                  href="/learner/interview/setup"
                   className="btn-primary flex items-center justify-center w-full py-3"
                 >
                   <Play size={20} className="mr-2" />
@@ -242,6 +242,12 @@ export default function LearnerDashboard() {
                   className="btn-outline w-full mt-4 py-2 text-center block"
                 >
                   View Detailed Report
+                </Link>
+                <Link
+                  href="/learner/history"
+                  className="btn-outline w-full mt-2 py-2 text-center block text-sm"
+                >
+                  View All Records
                 </Link>
               </div>
             </div>
