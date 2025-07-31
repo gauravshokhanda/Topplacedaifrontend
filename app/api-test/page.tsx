@@ -1,30 +1,34 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { 
-  Play, 
-  MessageSquare, 
-  Code, 
-  Square, 
+import { useState } from "react";
+import {
+  Play,
+  MessageSquare,
+  Code,
+  Square,
   FileText,
   Send,
   Terminal,
   CheckCircle,
   XCircle,
-  Clock
-} from 'lucide-react';
-import Navbar from '@/components/Navbar';
+  Clock,
+} from "lucide-react";
+import Navbar from "@/components/Navbar";
 
-const API_URL = 'https://5ae434e8bc3e.ngrok-free.app';
+const API_URL = "https://a49161831145.ngrok-free.app";
 
 export default function APITestClient() {
-  const [sessionId, setSessionId] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>("");
   const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState('Ready to test APIs');
+  const [status, setStatus] = useState("Ready to test APIs");
   const [error, setError] = useState<string | null>(null);
 
-  const makeAPICall = async (endpoint: string, method: string = 'POST', payload?: any) => {
+  const makeAPICall = async (
+    endpoint: string,
+    method: string = "POST",
+    payload?: any
+  ) => {
     setLoading(true);
     setError(null);
     setStatus(`Calling ${method} ${endpoint}...`);
@@ -33,9 +37,9 @@ export default function APITestClient() {
       const config: RequestInit = {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        }
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
       };
 
       if (payload) {
@@ -49,7 +53,7 @@ export default function APITestClient() {
       setStatus(`✅ ${method} ${endpoint} - Status: ${response.status}`);
 
       // Extract sessionId from start interview response
-      if (endpoint === '/interview/start' && data.sessionId) {
+      if (endpoint === "/interview/start" && data.sessionId) {
         setSessionId(data.sessionId);
       }
 
@@ -71,80 +75,77 @@ export default function APITestClient() {
         email: "priyansh@gmail.com",
         role: "user",
         experience: "3 years in full-stack development",
-        skills: [
-          "JavaScript",
-          "React",
-          "Node.js",
-          "Python",
-          "SQL"
-        ],
+        skills: ["JavaScript", "React", "Node.js", "Python", "SQL"],
         goals: "Land a senior developer role",
         education: [
           {
             degree: "B.Tech in Computer Science",
             institution: "Indian Institute of Technology, Delhi",
-            year: 2019
-          }
+            year: 2019,
+          },
         ],
         workExperience: [
           {
             title: "Full-Stack Developer",
             company: "TechNova Solutions",
             duration: "Jan 2021 - Present",
-            description: "Led development of scalable web applications using React and Node.js. Integrated RESTful APIs and optimized performance across multiple products."
+            description:
+              "Led development of scalable web applications using React and Node.js. Integrated RESTful APIs and optimized performance across multiple products.",
           },
           {
             title: "Frontend Developer Intern",
             company: "CodeCraft Inc.",
             duration: "Jun 2020 - Dec 2020",
-            description: "Worked on enhancing user interfaces with React and Material UI. Assisted in building reusable component libraries and responsive layouts."
-          }
+            description:
+              "Worked on enhancing user interfaces with React and Material UI. Assisted in building reusable component libraries and responsive layouts.",
+          },
         ],
-        profileCompletion: 85
+        profileCompletion: 85,
       },
       configuration: {
         level: "mid",
         category: "fullstack",
         duration: 30,
         hasCodeEditor: true,
-        language: "javascript"
+        language: "javascript",
       },
       context: {
         sessionId: `session_${Date.now()}`,
         startTime: new Date().toISOString(),
         userAgent: navigator.userAgent,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        isFreeInterview: true
-      }
+        isFreeInterview: true,
+      },
     };
 
-    makeAPICall('/interview/start', 'POST', payload);
+    makeAPICall("/interview/start", "POST", payload);
   };
 
   const sendMessage = () => {
     if (!sessionId) {
-      setError('Please initialize interview first to get a session ID');
+      setError("Please initialize interview first to get a session ID");
       return;
     }
 
-    const message = prompt('Enter your message:');
+    const message = prompt("Enter your message:");
     if (!message) return;
 
     const payload = {
       sessionId: sessionId,
-      message: message
+      message: message,
     };
 
-    makeAPICall('/interview/conversation', 'POST', payload);
+    makeAPICall("/interview/conversation", "POST", payload);
   };
 
   const executeCode = () => {
     if (!sessionId) {
-      setError('Please initialize interview first to get a session ID');
+      setError("Please initialize interview first to get a session ID");
       return;
     }
 
-    const code = prompt('Enter your code:', 
+    const code = prompt(
+      "Enter your code:",
       `function printFibonacci(n) {
   let fib = [0, 1];
 
@@ -161,7 +162,7 @@ export default function APITestClient() {
 // Example: Print first 10 Fibonacci numbers
 printFibonacci(10);`
     );
-    
+
     if (!code) return;
 
     const payload = {
@@ -170,16 +171,16 @@ printFibonacci(10);`
       language: "JS",
       codeContext: {
         questionId: "code_challenge_1",
-        question: "Write a function to generate Fibonacci series"
-      }
+        question: "Write a function to generate Fibonacci series",
+      },
     };
 
-    makeAPICall('/interview/code/execute', 'POST', payload);
+    makeAPICall("/interview/code/execute", "POST", payload);
   };
 
   const endInterview = () => {
     if (!sessionId) {
-      setError('Please initialize interview first to get a session ID');
+      setError("Please initialize interview first to get a session ID");
       return;
     }
 
@@ -189,14 +190,14 @@ printFibonacci(10);`
         id: "688a49e1421a4269f543b115",
         name: "Priyansh Panwar",
         email: "priyansh@gmail.com",
-        role: "user"
+        role: "user",
       },
       configuration: {
         level: "mid",
         category: "fullstack",
         duration: 30,
         hasCodeEditor: true,
-        language: "javascript"
+        language: "javascript",
       },
       results: {
         status: "completed",
@@ -205,21 +206,21 @@ printFibonacci(10);`
         questionsAnswered: 3,
         totalQuestions: 6,
         completionPercentage: 50,
-        terminationReason: "user_ended"
+        terminationReason: "user_ended",
       },
       conversationHistory: [
         {
           id: "msg_001",
           type: "ai",
           content: "Hello! Let's start the interview.",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
         {
           id: "msg_002",
           type: "user",
           content: "I'm ready to begin.",
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       ],
       performanceMetrics: {
         averageResponseTime: 8.5,
@@ -227,7 +228,7 @@ printFibonacci(10);`
         totalListeningTime: 480,
         communicationQuality: 85,
         technicalAccuracy: 88,
-        problemSolvingApproach: 82
+        problemSolvingApproach: 82,
       },
       violations: [],
       deviceMetrics: {
@@ -235,40 +236,57 @@ printFibonacci(10);`
         fullscreenExits: 0,
         microphoneIssues: 0,
         cameraIssues: 0,
-        networkInterruptions: 0
-      }
+        networkInterruptions: 0,
+      },
     };
 
-    makeAPICall('/interview/end', 'POST', payload);
+    makeAPICall("/interview/end", "POST", payload);
   };
 
   const getResults = () => {
     if (!sessionId) {
-      setError('Please initialize interview first to get a session ID');
+      setError("Please initialize interview first to get a session ID");
       return;
     }
 
-    makeAPICall(`/interview/results/${sessionId}`, 'GET');
+    makeAPICall(`/interview/results/${sessionId}`, "GET");
   };
 
   const endpoints = [
-    { method: 'POST', path: '/interview/start', description: 'Start interview' },
-    { method: 'POST', path: '/interview/conversation', description: 'Chat message' },
-    { method: 'POST', path: '/interview/code/execute', description: 'Code execution' },
-    { method: 'POST', path: '/interview/end', description: 'End interview' },
-    { method: 'GET', path: '/interview/results/:sessionId', description: 'Fetch results' }
+    {
+      method: "POST",
+      path: "/interview/start",
+      description: "Start interview",
+    },
+    {
+      method: "POST",
+      path: "/interview/conversation",
+      description: "Chat message",
+    },
+    {
+      method: "POST",
+      path: "/interview/code/execute",
+      description: "Code execution",
+    },
+    { method: "POST", path: "/interview/end", description: "End interview" },
+    {
+      method: "GET",
+      path: "/interview/results/:sessionId",
+      description: "Fetch results",
+    },
   ];
 
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
-      
+
       <div className="pt-20 pb-12">
         <div className="container-custom max-w-6xl">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              <span className="gradient-text">TopPlaced AI</span> Interview REST API Test Client
+              <span className="gradient-text">TopPlaced AI</span> Interview REST
+              API Test Client
             </h1>
             <p className="text-gray-400 text-lg">
               Test all interview API endpoints with real backend integration
@@ -286,16 +304,27 @@ printFibonacci(10);`
                 </h2>
                 <div className="space-y-3">
                   {endpoints.map((endpoint, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg"
+                    >
                       <div className="flex items-center space-x-3">
-                        <span className={`px-2 py-1 rounded text-xs font-mono ${
-                          endpoint.method === 'POST' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-mono ${
+                            endpoint.method === "POST"
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-blue-500/20 text-blue-400"
+                          }`}
+                        >
                           {endpoint.method}
                         </span>
-                        <code className="text-[#00FFB2] text-sm">{endpoint.path}</code>
+                        <code className="text-[#00FFB2] text-sm">
+                          {endpoint.path}
+                        </code>
                       </div>
-                      <span className="text-gray-400 text-sm">{endpoint.description}</span>
+                      <span className="text-gray-400 text-sm">
+                        {endpoint.description}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -303,7 +332,9 @@ printFibonacci(10);`
 
               {/* Session Info */}
               <div className="glass-card p-6">
-                <h3 className="text-lg font-semibold mb-4">Session Information</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Session Information
+                </h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg">
                     <span className="text-gray-400">API URL:</span>
@@ -311,19 +342,28 @@ printFibonacci(10);`
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg">
                     <span className="text-gray-400">Session ID:</span>
-                    <code className="text-[#00FFB2] text-sm">{sessionId || 'Not initialized'}</code>
+                    <code className="text-[#00FFB2] text-sm">
+                      {sessionId || "Not initialized"}
+                    </code>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg">
                     <span className="text-gray-400">Status:</span>
                     <div className="flex items-center space-x-2">
                       {loading ? (
-                        <Clock size={16} className="text-yellow-400 animate-spin" />
+                        <Clock
+                          size={16}
+                          className="text-yellow-400 animate-spin"
+                        />
                       ) : error ? (
                         <XCircle size={16} className="text-red-400" />
                       ) : (
                         <CheckCircle size={16} className="text-green-400" />
                       )}
-                      <span className={`text-sm ${error ? 'text-red-400' : 'text-green-400'}`}>
+                      <span
+                        className={`text-sm ${
+                          error ? "text-red-400" : "text-green-400"
+                        }`}
+                      >
                         {status}
                       </span>
                     </div>
@@ -393,8 +433,10 @@ printFibonacci(10);`
                 {response && (
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(response, null, 2));
-                      setStatus('Response copied to clipboard!');
+                      navigator.clipboard.writeText(
+                        JSON.stringify(response, null, 2)
+                      );
+                      setStatus("Response copied to clipboard!");
                     }}
                     className="btn-outline py-1 px-3 text-sm"
                   >
@@ -418,7 +460,10 @@ printFibonacci(10);`
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
-                      <Terminal size={48} className="text-gray-500 mx-auto mb-4" />
+                      <Terminal
+                        size={48}
+                        className="text-gray-500 mx-auto mb-4"
+                      />
                       <p className="text-gray-400">No API response yet</p>
                       <p className="text-gray-500 text-sm mt-2">
                         Click "Initialize Interview" to start testing
@@ -445,7 +490,9 @@ printFibonacci(10);`
             <h2 className="text-xl font-semibold mb-4">API Testing Guide</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-[#00FFB2] mb-2">Testing Flow:</h3>
+                <h3 className="font-semibold text-[#00FFB2] mb-2">
+                  Testing Flow:
+                </h3>
                 <ol className="text-sm text-gray-300 space-y-1">
                   <li>1. Click "Initialize Interview" to start</li>
                   <li>2. Use "Send Message" to test conversation</li>
@@ -472,18 +519,22 @@ printFibonacci(10);`
             <h2 className="text-xl font-semibold mb-4">Sample API Payloads</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-[#00FFB2] mb-2">Conversation Payload:</h3>
+                <h3 className="font-semibold text-[#00FFB2] mb-2">
+                  Conversation Payload:
+                </h3>
                 <pre className="text-xs text-gray-300 bg-[#1A1A1A] p-3 rounded-lg overflow-x-auto">
-{`{
+                  {`{
   "sessionId": "session_123456",
   "message": "I have 3 years of experience..."
 }`}
                 </pre>
               </div>
               <div>
-                <h3 className="font-semibold text-[#00FFB2] mb-2">Code Execution Payload:</h3>
+                <h3 className="font-semibold text-[#00FFB2] mb-2">
+                  Code Execution Payload:
+                </h3>
                 <pre className="text-xs text-gray-300 bg-[#1A1A1A] p-3 rounded-lg overflow-x-auto">
-{`{
+                  {`{
   "sessionId": "session_123456",
   "code": "function fibonacci(n) { ... }",
   "language": "JS",
