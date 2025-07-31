@@ -10,7 +10,7 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL:
       process.env.NODE_ENV === "production"
         ? "YOUR_PRODUCTION_API_URL"
-        : "http://localhost:3002",
+        : "https://f59bb1efb4f7.ngrok-free.app",
   },
 };
 
