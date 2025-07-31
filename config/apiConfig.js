@@ -1,6 +1,6 @@
 const apiConfig = {
   development: {
-    apiUrl: "http://localhost:3002",
+    apiUrl: "https://f59bb1efb4f7.ngrok-free.app",
   },
   production: {
     apiUrl: "YOUR_PRODUCTION_API_URL", // Replace with your production API URL
