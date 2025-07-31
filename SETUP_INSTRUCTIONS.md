@@ -36,7 +36,21 @@ NEXT_PUBLIC_GOOGLE_API_KEY=your_actual_api_key_here
 GOOGLE_CLOUD_PROJECT_ID=your_project_id_here
 ```
 
-## 3. Backend API Configuration
+## 3. Configure ElevenLabs API
+
+### Step 1: Get ElevenLabs API Key
+1. Go to [ElevenLabs](https://elevenlabs.io/)
+2. Sign up or log in to your account
+3. Go to your profile settings
+4. Navigate to the "API Keys" section
+5. Generate a new API key or copy your existing one
+
+### Step 2: Add ElevenLabs Configuration
+Add to your `.env.local`:
+```env
+ELEVENLABS_API_KEY=your_actual_elevenlabs_api_key_here
+```
+
 Update your backend API URL:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3002  # Development
