@@ -35,7 +35,7 @@ import { io, Socket } from 'socket.io-client';
 
 // Your backend API URLs
 const API_URL = 'https://5ae434e8bc3e.ngrok-free.app';
-const WEBSOCKET_URL = 'https://5ae434e8bc3e.ngrok-free.app';
+const WEBSOCKET_URL = 'wss://5ae434e8bc3e.ngrok-free.app';
 
 interface Message {
   id: string;
