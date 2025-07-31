@@ -210,16 +210,20 @@ function VoiceInterviewContent() {
     setIsAudioPlaying(true);
 
     try {
-      // Try Google TTS API first with proper error handling
-      const response = await fetch(`${API_URL}/api/text-to-speech`, {
+      // Try ElevenLabs TTS API first with proper error handling
+      const response = await fetch('/api/text-to-speech', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ 
+          text,
+          voice_id: 'EXAVITQu4vr4xnSDxMaL', // Sarah voice
+          model_id: 'eleven_monolingual_v1'
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔊 TTS API response:', data);
+        console.log('🔊 ElevenLabs TTS API response:', data);
 
         if (data.useBrowserTTS && speechSynthesis) {
           // Use browser's built-in speech synthesis
@@ -256,8 +260,8 @@ function VoiceInterviewContent() {
           };
 
           speechSynthesis.speak(utterance);
-        } else if (data.audioUrl) {
-          // Use Google TTS audio
+        } else if (data.audioUrl && data.audioContent) {
+          // Use ElevenLabs TTS audio
           const audio = new Audio(data.audioUrl);
           audio.onerror = (error) => {
             console.error('Audio playback error:', error);
@@ -277,14 +281,14 @@ function VoiceInterviewContent() {
             setCurrentAudioUrl(null);
           });
         } else {
-          throw new Error('No audio URL or browser TTS available');
+          throw new Error('No audio content from ElevenLabs or browser TTS available');
         }
       } else {
         const errorData = await response.json();
-        throw new Error(`TTS API failed: ${response.status} - ${errorData.error || 'Unknown error'}`);
+        throw new Error(`ElevenLabs TTS API failed: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error("❌ TTS error, using simulation fallback:", error);
+      console.error("❌ ElevenLabs TTS error, using simulation fallback:", error);
       // Fallback to simulation
       const duration = Math.random() * 2000 + 3000;
       setTimeout(() => {
