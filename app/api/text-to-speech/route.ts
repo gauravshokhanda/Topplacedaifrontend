@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { text } = requestBody;
+    const { text, voice = 'en-US-Wavenet-F', speed = 0.9 } = requestBody;
     
     if (!text || typeof text !== 'string') {
       return NextResponse.json(
@@ -30,13 +30,16 @@ export async function POST(request: NextRequest) {
     const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
     
     if (!googleApiKey) {
-      console.warn('Google API key not found, using browser speech synthesis');
+      console.error('Google API key not found in environment variables');
       return NextResponse.json({ 
         audioUrl: null,
         useBrowserTTS: true,
-        text 
-      });
+        text,
+        error: 'Google API key not configured'
+      }, { status: 500 });
     }
+
+    console.log('🔊 Making Google Text-to-Speech API call for text:', text.substring(0, 50) + '...');
 
     try {
       // Google Text-to-Speech API call
@@ -51,12 +54,12 @@ export async function POST(request: NextRequest) {
             input: { text },
             voice: {
               languageCode: 'en-US',
-              name: 'en-US-Wavenet-F', // Female voice
+              name: voice,
               ssmlGender: 'FEMALE',
             },
             audioConfig: {
               audioEncoding: 'MP3',
-              speakingRate: 0.9,
+              speakingRate: speed,
               pitch: 0,
               volumeGainDb: 0,
             },
@@ -71,6 +74,7 @@ export async function POST(request: NextRequest) {
       }
 
       const data = await response.json();
+      console.log('✅ Google Text-to-Speech API successful');
       
       if (data.audioContent) {
         // Return the base64 audio data
@@ -78,7 +82,8 @@ export async function POST(request: NextRequest) {
           audioContent: data.audioContent,
           audioUrl: `data:audio/mp3;base64,${data.audioContent}`,
           text,
-          useBrowserTTS: false
+          useBrowserTTS: false,
+          source: 'google-api'
         });
       } else {
         throw new Error('No audio content received from Google TTS');
@@ -92,7 +97,8 @@ export async function POST(request: NextRequest) {
         audioUrl: null,
         useBrowserTTS: true,
         text,
-        error: 'Google TTS unavailable, using browser fallback'
+        source: 'browser-fallback',
+        error: apiError instanceof Error ? apiError.message : 'Google TTS unavailable'
       });
     }
 
@@ -105,7 +111,8 @@ export async function POST(request: NextRequest) {
         error: 'Internal server error',
         audioUrl: null,
         useBrowserTTS: true,
-        text: 'Error occurred'
+        text: requestBody?.text || 'Error occurred',
+        source: 'error-fallback'
       }, 
       { status: 500 }
     );

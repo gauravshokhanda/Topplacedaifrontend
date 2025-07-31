@@ -210,8 +210,8 @@ function VoiceInterviewContent() {
     setIsAudioPlaying(true);
 
     try {
-      // Try Google TTS API first
-      const response = await fetch("/api/text-to-speech", {
+      // Try Google TTS API first with proper error handling
+      const response = await fetch(`${API_URL}/api/text-to-speech`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
@@ -219,6 +219,7 @@ function VoiceInterviewContent() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔊 TTS API response:', data);
 
         if (data.useBrowserTTS && speechSynthesis) {
           // Use browser's built-in speech synthesis
@@ -247,22 +248,43 @@ function VoiceInterviewContent() {
             setCurrentAudioUrl(null);
           };
 
+          utterance.onerror = (event) => {
+            console.error('Speech synthesis error:', event);
+            setIsAISpeaking(false);
+            setIsAudioPlaying(false);
+            setCurrentAudioUrl(null);
+          };
+
           speechSynthesis.speak(utterance);
         } else if (data.audioUrl) {
           // Use Google TTS audio
           const audio = new Audio(data.audioUrl);
+          audio.onerror = (error) => {
+            console.error('Audio playback error:', error);
+            setIsAISpeaking(false);
+            setIsAudioPlaying(false);
+            setCurrentAudioUrl(null);
+          };
           audio.onended = () => {
             setIsAISpeaking(false);
             setIsAudioPlaying(false);
             setCurrentAudioUrl(null);
           };
-          audio.play();
+          audio.play().catch(error => {
+            console.error('Audio play failed:', error);
+            setIsAISpeaking(false);
+            setIsAudioPlaying(false);
+            setCurrentAudioUrl(null);
+          });
+        } else {
+          throw new Error('No audio URL or browser TTS available');
         }
       } else {
-        throw new Error("TTS API failed");
+        const errorData = await response.json();
+        throw new Error(`TTS API failed: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error("❌ TTS error, using fallback:", error);
+      console.error("❌ TTS error, using simulation fallback:", error);
       // Fallback to simulation
       const duration = Math.random() * 2000 + 3000;
       setTimeout(() => {
