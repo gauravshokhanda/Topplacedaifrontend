@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
-const API_URL = "http://localhost:3002";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
 export default function APITestClient() {
   const [sessionId, setSessionId] = useState<string>("");

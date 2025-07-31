@@ -34,7 +34,7 @@ import { RootState } from "@/store/store";
 import { io, Socket } from "socket.io-client";
 
 // Your backend URL
-const API_URL = "http://localhost:3002";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
 interface Message {
   id: string;
