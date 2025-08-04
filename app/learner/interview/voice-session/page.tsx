@@ -396,7 +396,7 @@ function VoiceInterviewContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // "ngrok-skip-browser-warning": "true",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           sessionId: sessionId,
@@ -455,7 +455,7 @@ function VoiceInterviewContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // "ngrok-skip-browser-warning": "true",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify(interviewPayload),
       });
@@ -464,32 +464,41 @@ function VoiceInterviewContent() {
         const data = await response.json();
         console.log("✅ Interview started:", data);
 
-        setSessionId(data.sessionId);
-        setTotalQuestions(data.firstQuestion?.totalQuestions || 6);
+        // Updated to match your backend response structure
+        if (data.success && data.sessionId) {
+          setSessionId(data.sessionId);
+          setTotalQuestions(data.firstQuestion?.totalQuestions || 6);
 
-        const welcomeMessage: Message = {
-          id: `welcome_${Date.now()}`,
-          type: "ai",
-          content: data.message,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, welcomeMessage]);
-
-        if (data.firstQuestion) {
-          const questionMessage: Message = {
-            id: `q1_${Date.now()}`,
+          // Add AI welcome message
+          const welcomeMessage: Message = {
+            id: `welcome_${Date.now()}`,
             type: "ai",
-            content: data.firstQuestion.question,
+            content: data.message,
             timestamp: new Date(),
           };
-          setMessages((prev) => [...prev, questionMessage]);
-          setCurrentQuestionNumber(data.firstQuestion.questionNumber);
-          setCurrentQuestionId(data.firstQuestion.id);
+          setMessages((prev) => [...prev, welcomeMessage]);
 
-          playAIAudio("", data.firstQuestion.question);
+          // Add first question
+          if (data.firstQuestion) {
+            const questionMessage: Message = {
+              id: `q1_${Date.now()}`,
+              type: "ai",
+              content: data.firstQuestion.question,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, questionMessage]);
+            setCurrentQuestionNumber(data.firstQuestion.questionNumber);
+            setCurrentQuestionId(data.firstQuestion.id);
+
+            // Play AI audio for the first question
+            playAIAudio("", data.firstQuestion.question);
+          }
+        } else {
+          throw new Error(data.message || "Failed to initialize interview");
         }
       } else {
-        throw new Error(`API failed: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(`API failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("❌ Failed to start interview:", error);
@@ -568,7 +577,7 @@ function VoiceInterviewContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // "ngrok-skip-browser-warning": "true",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           sessionId: sessionId,
@@ -677,7 +686,7 @@ function VoiceInterviewContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // "ngrok-skip-browser-warning": "true",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify(endPayload),
       });
