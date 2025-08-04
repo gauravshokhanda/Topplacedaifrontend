@@ -1159,6 +1159,15 @@ function VoiceInterviewContent() {
                   Click the code editor button in the header to open the coding
                   environment.
                 </p>
+                <div className="bg-[#1A1A1A] p-4 rounded-lg mb-4">
+                  <h4 className="font-semibold mb-2 text-[#00FFB2]">Coding Instructions:</h4>
+                  <ul className="text-sm text-gray-400 space-y-1">
+                    <li>• Write your solution in the code editor</li>
+                    <li>• Click "Submit Code" to execute and get feedback</li>
+                    <li>• AI will provide detailed feedback and scoring</li>
+                    <li>• You can submit multiple times to improve</li>
+                  </ul>
+                </div>
                 <button
                   onClick={() => setShowCodeEditor(true)}
                   className="btn-primary flex items-center mx-auto"
