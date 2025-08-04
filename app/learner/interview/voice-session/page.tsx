@@ -167,13 +167,11 @@ function VoiceInterviewContent() {
 
         setMessages((prev) => [...prev, userMessage]);
 
-        // Send answer via REST API
+        // Send answer via enhanced conversation API
         if (sessionId) {
-          console.log("📤 Sending answer via REST API:", transcript);
+          console.log("📤 Sending answer via enhanced API:", transcript);
           sendAnswerToAPI(transcript);
         }
-
-        setQuestionsAnswered((prev) => prev + 1);
       };
 
       recognitionInstance.onerror = (event: any) => {
@@ -386,54 +384,71 @@ function VoiceInterviewContent() {
 
   const sendAnswerToAPI = async (answer: string) => {
     try {
-      const conversationPayload = {
+      const enhancedPayload = {
         sessionId: sessionId,
         message: answer,
-        messageType: 'answer',
         questionId: currentQuestionId,
+        responseTime: Math.floor(Math.random() * 20) + 5, // 5-25 seconds
         metadata: {
-          responseTime: 15.5,
-          confidence: 0.95,
-          followUp: false
+          userAgent: navigator.userAgent,
+          deviceType: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) ? 'mobile' : 'desktop'
         }
       };
 
-      const response = await fetch(`${API_URL}/interview/conversation`, {
+      console.log("📤 Sending enhanced conversation payload:", enhancedPayload);
+
+      const response = await fetch(`${API_URL}/interview/conversation/enhanced`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "ngrok-skip-browser-warning": "true",
         },
-        body: JSON.stringify(conversationPayload),
+        body: JSON.stringify(enhancedPayload),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Answer sent successfully:", data);
+        console.log("✅ Enhanced conversation response:", data);
 
-        if (data.success && data.response) {
+        if (data.success && data.aiResponse) {
           const aiMessage: Message = {
             id: `ai_${Date.now()}`,
             type: "ai",
-            content: data.response,
+            content: data.aiResponse,
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, aiMessage]);
 
           // Play AI audio response
-          playAIAudio("", data.response);
+          playAIAudio("", data.aiResponse);
 
-          // Update question progress if new question provided
-          if (data.nextQuestion) {
-            setCurrentQuestionNumber(data.nextQuestion.questionNumber);
-            setCurrentQuestionId(data.nextQuestion.id);
-            setQuestionsAnswered(data.nextQuestion.questionNumber - 1);
-          } else {
-            setQuestionsAnswered((prev) => prev + 1);
+          // Update question progress
+          if (data.currentQuestion) {
+            setCurrentQuestionNumber(data.currentQuestion.questionNumber);
+            setCurrentQuestionId(data.currentQuestion.id);
+          }
+          
+          // Update progress from API response
+          if (data.progress) {
+            setQuestionsAnswered(data.progress.questionsAnswered);
+            setTotalQuestions(data.progress.totalQuestions);
+            setInterviewProgress(data.progress.completionPercentage);
+          }
+
+          // Handle code execution results if present
+          if (data.codeExecutionResult) {
+            const codeResultMessage: Message = {
+              id: `code_result_${Date.now()}`,
+              type: "ai",
+              content: `**Code Execution Results:**\n- Status: ${data.codeExecutionResult.success ? '✅ Success' : '❌ Failed'}\n- Output: ${data.codeExecutionResult.output}\n- Execution Time: ${data.codeExecutionResult.executionTime}ms\n- Memory Usage: ${data.codeExecutionResult.memory}\n\n**Feedback:**\n- Score: ${data.codeExecutionResult.feedback?.score || 0}/100\n- Assessment: ${data.codeExecutionResult.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${data.codeExecutionResult.feedback?.message || 'No feedback available'}\n${data.codeExecutionResult.feedback?.suggestions ? '\n- Suggestions: ' + data.codeExecutionResult.feedback.suggestions.join(', ') : ''}`,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, codeResultMessage]);
           }
         }
       } else {
-        throw new Error(`HTTP ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(`HTTP ${response.status}: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("❌ Error sending answer:", error);
@@ -441,6 +456,80 @@ function VoiceInterviewContent() {
         id: `error_${Date.now()}`,
         type: "system",
         content: `❌ Failed to send answer: ${
+          error && typeof error === "object" && "message" in error
+            ? (error as { message: string }).message
+            : String(error)
+        }`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
+  const sendCodeToAPI = async (code: string, questionId: string) => {
+    try {
+      const codePayload = {
+        sessionId: sessionId,
+        message: `Code submission for question: ${questionId}`,
+        questionId: questionId,
+        codeContext: {
+          questionId: questionId,
+          code: code,
+          language: language,
+          isCodeSubmission: true
+        },
+        responseTime: Math.floor(Math.random() * 60) + 30 // 30-90 seconds for coding
+      };
+
+      console.log("💻 Sending code submission:", codePayload);
+
+      const response = await fetch(`${API_URL}/interview/conversation/enhanced`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify(codePayload),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("✅ Code execution response:", data);
+
+        if (data.success && data.codeExecutionResult) {
+          const result = data.codeExecutionResult;
+          
+          const codeResultMessage: Message = {
+            id: `code_result_${Date.now()}`,
+            type: "ai",
+            content: `**Code Execution Results:**\n- Status: ${result.success ? '✅ Success' : '❌ Failed'}\n- Output: ${result.output}\n- Execution Time: ${result.executionTime}ms\n- Memory Usage: ${result.memory}\n\n**Feedback:**\n- Score: ${result.feedback?.score || 0}/100\n- Assessment: ${result.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${result.feedback?.message || 'No feedback available'}\n${result.feedback?.suggestions ? '\n- Suggestions: ' + result.feedback.suggestions.join(', ') : ''}`,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, codeResultMessage]);
+
+          // Play AI feedback audio
+          if (data.aiResponse) {
+            playAIAudio("", data.aiResponse);
+          } else {
+            playAIAudio("", result.feedback?.message || "Code executed successfully!");
+          }
+
+          // Update progress
+          if (data.progress) {
+            setQuestionsAnswered(data.progress.questionsAnswered);
+            setInterviewProgress(data.progress.completionPercentage);
+          }
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(`HTTP ${response.status}: ${errorData.message || 'Code execution failed'}`);
+      }
+    } catch (error) {
+      console.error("❌ Code execution error:", error);
+      const errorMessage: Message = {
+        id: `error_${Date.now()}`,
+        type: "system",
+        content: `❌ Code execution failed: ${
           error && typeof error === "object" && "message" in error
             ? (error as { message: string }).message
             : String(error)
@@ -502,6 +591,11 @@ function VoiceInterviewContent() {
 
             // Play AI audio for the first question
             playAIAudio("", data.firstQuestion.question);
+            
+            // Set current question details
+            setCurrentQuestionId(data.firstQuestion.id);
+            setCurrentQuestionNumber(data.firstQuestion.questionNumber);
+            setTotalQuestions(data.firstQuestion.totalQuestions);
           }
         } else {
           throw new Error(data.message || "Failed to initialize interview");
@@ -582,63 +676,8 @@ function VoiceInterviewContent() {
 
     setMessages((prev) => [...prev, codeMessage]);
 
-    try {
-      const codePayload = {
-        sessionId: sessionId,
-        code: code,
-        language: language.toUpperCase(),
-        codeContext: {
-          questionId: currentQuestionId || `code_${Date.now()}`,
-          question: `Code execution for ${language}`,
-          submissionNumber: messages.filter(m => m.content.includes('Code submitted')).length + 1,
-          timestamp: new Date().toISOString()
-        }
-      };
-
-      const response = await fetch(`${API_URL}/interview/code/execute`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify(codePayload),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log("✅ Code execution result:", result);
-
-        const resultMessage: Message = {
-          id: `result_${Date.now()}`,
-          type: "ai",
-          content: `Code executed successfully!\n\nOutput: ${
-            result.output || "No output"
-          }\n\nFeedback: ${result.feedback || "Good job!"}${
-            result.score ? `\n\nScore: ${result.score}%` : ""
-          }`,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, resultMessage]);
-
-        // Play audio feedback
-        playAIAudio("", result.feedback || "Code executed successfully!");
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    } catch (error) {
-      console.error("❌ Code execution error:", error);
-      const errorMessage: Message = {
-        id: `error_${Date.now()}`,
-        type: "system",
-        content: `❌ Code execution failed: ${
-          error && typeof error === "object" && "message" in error
-            ? (error as { message: string }).message
-            : String(error)
-        }`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    }
+    // Send code via enhanced conversation API
+    await sendCodeToAPI(code, currentQuestionId || `code_${Date.now()}`);
   };
 
   const handleEndInterview = async () => {
