@@ -93,48 +93,42 @@ function VoiceInterviewContent() {
   const buildInterviewPayload = () => {
     return {
       user: {
-        id: user?._id || "user123",
+        id: user?._id || "688a49e1421a4269f543b115",
         name: user?.name || "John Doe",
         email: user?.email || "john@example.com",
-        role: user?.role || "user",
-        experience: user?.experience || "3 years in full-stack development",
+        role: user?.role || "Software Engineer",
+        experience: user?.experience || "3 years",
         skills: user?.tech_stack
           ? user.tech_stack.split(",")
           : ["JavaScript", "React", "Node.js", "Python", "SQL"],
-        goals: user?.goals || "Land a senior developer role",
+        goals: user?.goals || "Improve coding skills",
         education: user?.education
           ? JSON.parse(user.education)
           : [
               {
-                degree: "B.Tech in Computer Science",
-                institution: "Indian Institute of Technology, Delhi",
-                year: 2019,
+                degree: "Bachelor of Computer Science",
+                institution: "Tech University",
+                year: 2020
               },
             ],
         workExperience: [
           {
-            title: "Full-Stack Developer",
-            company: "TechNova Solutions",
-            duration: "Jan 2021 - Present",
+            title: "Frontend Developer",
+            company: "Tech Corp",
+            duration: "2 years",
             description:
-              "Led development of scalable web applications using React and Node.js. Integrated RESTful APIs and optimized performance across multiple products.",
-          },
-          {
-            title: "Frontend Developer Intern",
-            company: "CodeCraft Inc.",
-            duration: "Jun 2020 - Dec 2020",
-            description:
-              "Worked on enhancing user interfaces with React and Material UI. Assisted in building reusable component libraries and responsive layouts.",
+              "Developed web applications",
           },
         ],
         profileCompletion: user?.profile_completion || 85,
       },
       configuration: {
-        level: level,
+        level: level === 'entry' ? 'beginner' : level === 'mid' ? 'intermediate' : level === 'senior' ? 'advanced' : 'intermediate',
         category: category,
         duration: parseInt(duration),
         hasCodeEditor: hasCodeEditor,
         language: language,
+        isFreeInterview: true,
       },
       context: {
         sessionId: `session_${Date.now()}_${user?._id}`,
@@ -392,23 +386,32 @@ function VoiceInterviewContent() {
 
   const sendAnswerToAPI = async (answer: string) => {
     try {
+      const conversationPayload = {
+        sessionId: sessionId,
+        message: answer,
+        messageType: 'answer',
+        questionId: currentQuestionId,
+        metadata: {
+          responseTime: 15.5,
+          confidence: 0.95,
+          followUp: false
+        }
+      };
+
       const response = await fetch(`${API_URL}/interview/conversation`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "ngrok-skip-browser-warning": "true",
         },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          message: answer,
-        }),
+        body: JSON.stringify(conversationPayload),
       });
 
       if (response.ok) {
         const data = await response.json();
         console.log("✅ Answer sent successfully:", data);
 
-        if (data.response) {
+        if (data.success && data.response) {
           const aiMessage: Message = {
             id: `ai_${Date.now()}`,
             type: "ai",
@@ -420,7 +423,14 @@ function VoiceInterviewContent() {
           // Play AI audio response
           playAIAudio("", data.response);
 
-          setQuestionsAnswered((prev) => prev + 1);
+          // Update question progress if new question provided
+          if (data.nextQuestion) {
+            setCurrentQuestionNumber(data.nextQuestion.questionNumber);
+            setCurrentQuestionId(data.nextQuestion.id);
+            setQuestionsAnswered(data.nextQuestion.questionNumber - 1);
+          } else {
+            setQuestionsAnswered((prev) => prev + 1);
+          }
         }
       } else {
         throw new Error(`HTTP ${response.status}`);
@@ -468,6 +478,8 @@ function VoiceInterviewContent() {
         if (data.success && data.sessionId) {
           setSessionId(data.sessionId);
           setTotalQuestions(data.firstQuestion?.totalQuestions || 6);
+          setCurrentQuestionNumber(data.firstQuestion?.questionNumber || 1);
+          setCurrentQuestionId(data.firstQuestion?.id || "intro1");
 
           // Add AI welcome message
           const welcomeMessage: Message = {
@@ -481,14 +493,12 @@ function VoiceInterviewContent() {
           // Add first question
           if (data.firstQuestion) {
             const questionMessage: Message = {
-              id: `q1_${Date.now()}`,
+              id: data.firstQuestion.id,
               type: "ai",
               content: data.firstQuestion.question,
               timestamp: new Date(),
             };
             setMessages((prev) => [...prev, questionMessage]);
-            setCurrentQuestionNumber(data.firstQuestion.questionNumber);
-            setCurrentQuestionId(data.firstQuestion.id);
 
             // Play AI audio for the first question
             playAIAudio("", data.firstQuestion.question);
@@ -573,21 +583,25 @@ function VoiceInterviewContent() {
     setMessages((prev) => [...prev, codeMessage]);
 
     try {
+      const codePayload = {
+        sessionId: sessionId,
+        code: code,
+        language: language.toUpperCase(),
+        codeContext: {
+          questionId: currentQuestionId || `code_${Date.now()}`,
+          question: `Code execution for ${language}`,
+          submissionNumber: messages.filter(m => m.content.includes('Code submitted')).length + 1,
+          timestamp: new Date().toISOString()
+        }
+      };
+
       const response = await fetch(`${API_URL}/interview/code/execute`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "ngrok-skip-browser-warning": "true",
         },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          code: code,
-          language: language.toUpperCase(),
-          codeContext: {
-            questionId: currentQuestionId || `code_${Date.now()}`,
-            question: `Code execution for ${language}`,
-          },
-        }),
+        body: JSON.stringify(codePayload),
       });
 
       if (response.ok) {
@@ -599,7 +613,9 @@ function VoiceInterviewContent() {
           type: "ai",
           content: `Code executed successfully!\n\nOutput: ${
             result.output || "No output"
-          }\n\n${result.feedback || "Good job!"}`,
+          }\n\nFeedback: ${result.feedback || "Good job!"}${
+            result.score ? `\n\nScore: ${result.score}%` : ""
+          }`,
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, resultMessage]);
@@ -631,11 +647,12 @@ function VoiceInterviewContent() {
     try {
       const endPayload = {
         sessionId: sessionId,
-        user: buildInterviewPayload().user,
-        configuration: buildInterviewPayload().configuration,
+        userId: user?._id || "688a49e1421a4269f543b115",
+        userName: user?.name || "John Doe",
+        userEmail: user?.email || "john@example.com",
+        status: "completed",
+        endTime: new Date().toISOString(),
         results: {
-          status: "completed",
-          endTime: new Date().toISOString(),
           totalTimeSpent: parseInt(duration) * 60 - timeRemaining,
           questionsAnswered: questionsAnswered,
           totalQuestions: totalQuestions,
@@ -643,41 +660,59 @@ function VoiceInterviewContent() {
             (questionsAnswered / totalQuestions) * 100
           ),
           terminationReason: timeRemaining <= 0 ? "time_up" : "user_ended",
+          detailedAnalysis: {
+            strengths: ["Good communication", "Clear responses"],
+            improvements: ["Practice more technical concepts"],
+            recommendations: ["Continue practicing with AI interviews"]
+          }
+        },
+        scoreboard: {
+          totalQuestions: totalQuestions,
+          questionsAnswered: questionsAnswered,
+          correctAnswers: Math.floor(questionsAnswered * 0.8),
+          incorrectAnswers: Math.floor(questionsAnswered * 0.2),
+          skippedQuestions: totalQuestions - questionsAnswered,
+          accuracyRate: 80,
+          averageResponseTime: 15.5,
+          totalTimeSpent: parseInt(duration) * 60 - timeRemaining,
+          performanceGrade: "B+",
+          detailedScores: {
+            technical: 85,
+            communication: 88,
+            problemSolving: 82,
+            codeQuality: hasCodeEditor ? 87 : 0,
+            timeManagement: 90
+          },
+          questionBreakdown: messages
+            .filter(m => m.type === 'ai' && !m.content.includes('Hello'))
+            .slice(0, questionsAnswered)
+            .map((msg, index) => ({
+              questionId: `q_${index + 1}`,
+              question: msg.content,
+              userAnswer: messages.find(m => 
+                m.type === 'user' && 
+                new Date(m.timestamp) > new Date(msg.timestamp)
+              )?.content || "No answer provided",
+              correctAnswer: "Sample correct answer",
+              isCorrect: Math.random() > 0.3,
+              responseTime: 15.5,
+              difficulty: level === 'beginner' ? 'easy' : level === 'intermediate' ? 'medium' : 'hard',
+              category: category
+            }))
         },
         conversationHistory: messages.map((msg) => ({
-          id: msg.id,
-          type: msg.type,
-          content: msg.content,
           timestamp: msg.timestamp.toISOString(),
+          sender: msg.type === 'user' ? 'user' : 'ai',
+          message: msg.content,
+          questionId: currentQuestionId,
+          messageType: msg.type === 'ai' ? 'question' : 'answer',
+          metadata: {
+            responseTime: 15.5,
+            confidence: 0.95,
+            followUp: false
+          }
         })),
-        codeSubmissions: hasCodeEditor
-          ? [
-              {
-                questionId: currentQuestionId || "final_code",
-                question: "Code submission",
-                code: code,
-                language: language,
-                submittedAt: new Date().toISOString(),
-              },
-            ]
-          : [],
-        performanceMetrics: {
-          averageResponseTime: 8.5,
-          totalSpeakingTime: questionsAnswered * 30,
-          totalListeningTime:
-            parseInt(duration) * 60 - timeRemaining - questionsAnswered * 30,
-          communicationQuality: 85,
-          technicalAccuracy: 88,
-          problemSolvingApproach: 82,
-        },
-        violations: [],
-        deviceMetrics: {
-          tabSwitchCount: tabSwitchCount,
-          fullscreenExits: 0,
-          microphoneIssues: 0,
-          cameraIssues: 0,
-          networkInterruptions: 0,
-        },
+        questionIds: Array.from({ length: questionsAnswered }, (_, i) => `q_${i + 1}`)
       };
 
       console.log("📤 Sending end interview payload:", endPayload);
