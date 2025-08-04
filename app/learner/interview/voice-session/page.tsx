@@ -202,8 +202,8 @@ function VoiceInterviewContent() {
     setIsAudioPlaying(true);
 
     try {
-      // Try ElevenLabs TTS API first with proper error handling
-      const response = await fetch('http://localhost:3000/api/text-to-speech', {
+      // Call ElevenLabs API directly
+      const response = await fetch('/api/text-to-speech', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
