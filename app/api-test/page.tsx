@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = "https://a67ae9e25cd7.ngrok-free.app";
 
 export default function APITestClient() {
   const [sessionId, setSessionId] = useState<string>("");
@@ -38,7 +38,7 @@ export default function APITestClient() {
         method,
         headers: {
           "Content-Type": "application/json",
-          // "ngrok-skip-browser-warning": "true",
+          "ngrok-skip-browser-warning": "true",
         },
       };
 
@@ -52,8 +52,8 @@ export default function APITestClient() {
       setResponse(data);
       setStatus(`✅ ${method} ${endpoint} - Status: ${response.status}`);
 
-      // Extract sessionId from start interview response
-      if (endpoint === "/interview/start" && data.sessionId) {
+      // Extract sessionId from start interview response (updated structure)
+      if (endpoint === "/interview/start" && data.success && data.sessionId) {
         setSessionId(data.sessionId);
       }
 
@@ -71,49 +71,41 @@ export default function APITestClient() {
     const payload = {
       user: {
         id: "688a49e1421a4269f543b115",
-        name: "Priyansh Panwar",
-        email: "priyansh@gmail.com",
-        role: "user",
+        name: "John Doe",
+        email: "john@example.com",
+        role: "Software Engineer",
         experience: "3 years in full-stack development",
         skills: ["JavaScript", "React", "Node.js", "Python", "SQL"],
-        goals: "Land a senior developer role",
+        goals: "Improve coding skills",
         education: [
           {
-            degree: "B.Tech in Computer Science",
-            institution: "Indian Institute of Technology, Delhi",
-            year: 2019,
+            degree: "Bachelor of Computer Science",
+            institution: "Tech University",
+            year: 2020
           },
         ],
         workExperience: [
           {
-            title: "Full-Stack Developer",
-            company: "TechNova Solutions",
-            duration: "Jan 2021 - Present",
-            description:
-              "Led development of scalable web applications using React and Node.js. Integrated RESTful APIs and optimized performance across multiple products.",
-          },
-          {
-            title: "Frontend Developer Intern",
-            company: "CodeCraft Inc.",
-            duration: "Jun 2020 - Dec 2020",
-            description:
-              "Worked on enhancing user interfaces with React and Material UI. Assisted in building reusable component libraries and responsive layouts.",
+            title: "Frontend Developer",
+            company: "Tech Corp",
+            duration: "2 years",
+            description: "Developed web applications"
           },
         ],
         profileCompletion: 85,
       },
       configuration: {
-        level: "mid",
-        category: "fullstack",
+        level: "intermediate",
+        category: "frontend",
         duration: 30,
         hasCodeEditor: true,
         language: "javascript",
       },
       context: {
-        sessionId: `session_${Date.now()}`,
-        startTime: new Date().toISOString(),
+        sessionId: "session-123",
+        startTime: "2024-01-15T10:00:00Z",
         userAgent: navigator.userAgent,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone: "UTC",
         isFreeInterview: true,
       },
     };
@@ -188,7 +180,7 @@ printFibonacci(10);`
       sessionId: sessionId,
       user: {
         id: "688a49e1421a4269f543b115",
-        name: "Priyansh Panwar",
+        name: "John Doe",
         email: "priyansh@gmail.com",
         role: "user",
       },
@@ -306,7 +298,7 @@ printFibonacci(10);`
                   {endpoints.map((endpoint, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg"
+                      className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg hover:bg-[#00FFB2]/10 transition-colors"
                     >
                       <div className="flex items-center space-x-3">
                         <span
@@ -338,7 +330,7 @@ printFibonacci(10);`
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg">
                     <span className="text-gray-400">API URL:</span>
-                    <code className="text-[#00FFB2] text-sm">{API_URL}</code>
+                    <code className="text-[#00FFB2] text-sm break-all">{API_URL}</code>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-[#1A1A1A] rounded-lg">
                     <span className="text-gray-400">Session ID:</span>
@@ -378,7 +370,7 @@ printFibonacci(10);`
                   <button
                     onClick={initializeInterview}
                     disabled={loading}
-                    className="w-full btn-primary py-3 flex items-center justify-center space-x-2 disabled:opacity-50"
+                    className="w-full btn-primary py-3 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Play size={20} />
                     <span>Initialize Interview (/start)</span>
@@ -487,28 +479,26 @@ printFibonacci(10);`
 
           {/* API Documentation */}
           <div className="mt-8 glass-card p-6">
-            <h2 className="text-xl font-semibold mb-4">API Testing Guide</h2>
+            <h2 className="text-xl font-semibold mb-4">Live Backend Integration</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-[#00FFB2] mb-2">
-                  Testing Flow:
-                </h3>
+                <h3 className="font-semibold text-[#00FFB2] mb-2">Current Backend:</h3>
                 <ol className="text-sm text-gray-300 space-y-1">
-                  <li>1. Click &quot;Initialize Interview&quot; to start</li>
-                  <li>2. Use &quot;Send Message&quot; to test conversation</li>
-                  <li>3. Try &quot;Execute Code&quot; for code challenges</li>
-                  <li>4. &quot;End Interview&quot; to complete session</li>
-                  <li>5. &quot;Get Results&quot; to fetch final scores</li>
+                  <li>• Connected to live ngrok backend</li>
+                  <li>• Real interview session management</li>
+                  <li>• Actual AI conversation processing</li>
+                  <li>• Live code execution environment</li>
+                  <li>• Persistent session tracking</li>
                 </ol>
               </div>
               <div>
-                <h3 className="font-semibold text-[#00FFB2] mb-2">Features:</h3>
+                <h3 className="font-semibold text-[#00FFB2] mb-2">Response Structure:</h3>
                 <ul className="text-sm text-gray-300 space-y-1">
-                  <li>• Real backend API integration</li>
-                  <li>• Session state management</li>
-                  <li>• JSON response formatting</li>
-                  <li>• Error handling and status updates</li>
-                  <li>• Copy response to clipboard</li>
+                  <li>• success: boolean status</li>
+                  <li>• message: AI welcome message</li>
+                  <li>• sessionId: unique session identifier</li>
+                  <li>• firstQuestion: structured question data</li>
+                  <li>• interviewConfig: session configuration</li>
                 </ul>
               </div>
             </div>
@@ -516,31 +506,48 @@ printFibonacci(10);`
 
           {/* Sample Payloads */}
           <div className="mt-8 glass-card p-6">
-            <h2 className="text-xl font-semibold mb-4">Sample API Payloads</h2>
+            <h2 className="text-xl font-semibold mb-4">Live API Integration</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-[#00FFB2] mb-2">
-                  Conversation Payload:
-                </h3>
+                <h3 className="font-semibold text-[#00FFB2] mb-2">Start Interview Payload:</h3>
                 <pre className="text-xs text-gray-300 bg-[#1A1A1A] p-3 rounded-lg overflow-x-auto">
                   {`{
-  "sessionId": "session_123456",
-  "message": "I have 3 years of experience..."
+  "user": {
+    "id": "688a49e1421a4269f543b115",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "Software Engineer",
+    "experience": "3 years",
+    "skills": ["JavaScript", "React", "Node.js"]
+  },
+  "configuration": {
+    "level": "intermediate",
+    "category": "frontend",
+    "duration": 30,
+    "hasCodeEditor": true,
+    "language": "javascript"
+  }
 }`}
                 </pre>
               </div>
               <div>
-                <h3 className="font-semibold text-[#00FFB2] mb-2">
-                  Code Execution Payload:
-                </h3>
+                <h3 className="font-semibold text-[#00FFB2] mb-2">Expected Response:</h3>
                 <pre className="text-xs text-gray-300 bg-[#1A1A1A] p-3 rounded-lg overflow-x-auto">
                   {`{
-  "sessionId": "session_123456",
-  "code": "function fibonacci(n) { ... }",
-  "language": "JS",
-  "codeContext": {
-    "questionId": "code_1",
-    "question": "Fibonacci series"
+  "success": true,
+  "message": "Hello John! I'm your AI interviewer...",
+  "sessionId": "session_1754331254303_nwp0fzfn7",
+  "firstQuestion": {
+    "id": "intro1",
+    "question": "Could you please introduce yourself?",
+    "questionNumber": 1,
+    "totalQuestions": 6
+  },
+  "interviewConfig": {
+    "level": "intermediate",
+    "category": "frontend",
+    "duration": 30,
+    "hasCodeEditor": true
   }
 }`}
                 </pre>
