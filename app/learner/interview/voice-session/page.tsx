@@ -384,18 +384,14 @@ function VoiceInterviewContent() {
 
   const sendAnswerToAPI = async (answer: string) => {
     try {
-      const enhancedPayload = {
+      const conversationPayload = {
         sessionId: sessionId,
         message: answer,
-        questionId: currentQuestionId,
-        responseTime: Math.floor(Math.random() * 20) + 5, // 5-25 seconds
-        metadata: {
-          userAgent: navigator.userAgent,
-          deviceType: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) ? 'mobile' : 'desktop'
-        }
+        questionId: currentQuestionId || `q_${Date.now()}`,
+        responseTime: Math.floor(Math.random() * 20) + 5
       };
 
-      console.log("📤 Sending enhanced conversation payload:", enhancedPayload);
+      console.log("📤 Sending conversation payload:", conversationPayload);
 
       const response = await fetch(`${API_URL}/interview/conversation/enhanced`, {
         method: "POST",
@@ -403,31 +399,25 @@ function VoiceInterviewContent() {
           "Content-Type": "application/json",
           "ngrok-skip-browser-warning": "true",
         },
-        body: JSON.stringify(enhancedPayload),
+        body: JSON.stringify(conversationPayload),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Enhanced conversation response:", data);
+        console.log("✅ Conversation response:", data);
 
-        if (data.success && data.aiResponse) {
+        if (data.success) {
           const aiMessage: Message = {
             id: `ai_${Date.now()}`,
             type: "ai",
-            content: data.aiResponse,
+            content: data.aiResponse || "Thank you for your response. Let me continue with the next question.",
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, aiMessage]);
 
           // Play AI audio response
-          playAIAudio("", data.aiResponse);
+          playAIAudio("", data.aiResponse || "Thank you for your response.");
 
-          // Update question progress
-          if (data.currentQuestion) {
-            setCurrentQuestionNumber(data.currentQuestion.questionNumber);
-            setCurrentQuestionId(data.currentQuestion.id);
-          }
-          
           // Update progress from API response
           if (data.progress) {
             setQuestionsAnswered(data.progress.questionsAnswered);
@@ -435,12 +425,33 @@ function VoiceInterviewContent() {
             setInterviewProgress(data.progress.completionPercentage);
           }
 
+          // Update current question if provided
+          if (data.currentQuestion) {
+            setCurrentQuestionNumber(data.currentQuestion.questionNumber);
+            setCurrentQuestionId(data.currentQuestion.id);
+            
+            // Add the new question as a message
+            const questionMessage: Message = {
+              id: `question_${Date.now()}`,
+              type: "ai",
+              content: data.currentQuestion.question,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, questionMessage]);
+            
+            // Play the new question audio
+            setTimeout(() => {
+              playAIAudio("", data.currentQuestion.question);
+            }, 2000);
+          }
+
           // Handle code execution results if present
           if (data.codeExecutionResult) {
+            const result = data.codeExecutionResult;
             const codeResultMessage: Message = {
               id: `code_result_${Date.now()}`,
               type: "ai",
-              content: `**Code Execution Results:**\n- Status: ${data.codeExecutionResult.success ? '✅ Success' : '❌ Failed'}\n- Output: ${data.codeExecutionResult.output}\n- Execution Time: ${data.codeExecutionResult.executionTime}ms\n- Memory Usage: ${data.codeExecutionResult.memory}\n\n**Feedback:**\n- Score: ${data.codeExecutionResult.feedback?.score || 0}/100\n- Assessment: ${data.codeExecutionResult.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${data.codeExecutionResult.feedback?.message || 'No feedback available'}\n${data.codeExecutionResult.feedback?.suggestions ? '\n- Suggestions: ' + data.codeExecutionResult.feedback.suggestions.join(', ') : ''}`,
+              content: `**Code Execution Results:**\n- Status: ${result.success ? '✅ Success' : '❌ Failed'}\n- Output: ${result.output}\n- Execution Time: ${result.executionTime}ms\n- Memory Usage: ${result.memory}\n\n**Feedback:**\n- Score: ${result.feedback?.score || 0}/100\n- Assessment: ${result.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${result.feedback?.message || 'No feedback available'}\n${result.feedback?.suggestions ? '\n- Suggestions: ' + result.feedback.suggestions.join(', ') : ''}`,
               timestamp: new Date(),
             };
             setMessages((prev) => [...prev, codeResultMessage]);
@@ -470,7 +481,7 @@ function VoiceInterviewContent() {
     try {
       const codePayload = {
         sessionId: sessionId,
-        message: `Code submission for question: ${questionId}`,
+        message: `Here's my solution to the coding question`,
         questionId: questionId,
         codeContext: {
           questionId: questionId,
@@ -478,7 +489,7 @@ function VoiceInterviewContent() {
           language: language,
           isCodeSubmission: true
         },
-        responseTime: Math.floor(Math.random() * 60) + 30 // 30-90 seconds for coding
+        responseTime: Math.floor(Math.random() * 180) + 120 // 2-5 minutes for coding
       };
 
       console.log("💻 Sending code submission:", codePayload);
@@ -496,7 +507,149 @@ function VoiceInterviewContent() {
         const data = await response.json();
         console.log("✅ Code execution response:", data);
 
-        if (data.success && data.codeExecutionResult) {
+        if (data.success) {
+          // Add AI response message
+          if (data.aiResponse) {
+            const aiMessage: Message = {
+              id: `ai_code_${Date.now()}`,
+              type: "ai",
+              content: data.aiResponse,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, aiMessage]);
+            
+            // Play AI feedback audio
+            playAIAudio("", data.aiResponse);
+          }
+
+          // Handle code execution results
+          if (data.codeExecutionResult) {
+            const result = data.codeExecutionResult;
+            
+            const codeResultMessage: Message = {
+              id: `code_detailed_${Date.now()}`,
+              type: "system",
+              content: `**Code Execution Results:**\n- Status: ${result.success ? '✅ Success' : '❌ Failed'}\n- Output: ${result.output}\n- Execution Time: ${result.executionTime}ms\n- Memory Usage: ${result.memory}\n\n**Feedback:**\n- Score: ${result.feedback?.score || 0}/100\n- Assessment: ${result.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${result.feedback?.message || 'No feedback available'}\n${result.feedback?.suggestions ? '\n- Suggestions: ' + result.feedback.suggestions.join(', ') : ''}`,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, codeResultMessage]);
+          }
+
+          // Update progress
+          if (data.progress) {
+            setQuestionsAnswered(data.progress.questionsAnswered);
+            setTotalQuestions(data.progress.totalQuestions);
+            setInterviewProgress(data.progress.completionPercentage);
+          }
+
+          // Handle next question
+          if (data.currentQuestion) {
+            setCurrentQuestionNumber(data.currentQuestion.questionNumber);
+            setCurrentQuestionId(data.currentQuestion.id);
+            
+            // Add the new question as a message after a delay
+            setTimeout(() => {
+              const questionMessage: Message = {
+                id: `question_${Date.now()}`,
+                type: "ai",
+                content: data.currentQuestion.question,
+                timestamp: new Date(),
+              };
+              setMessages((prev) => [...prev, questionMessage]);
+              
+              // Play the new question audio
+              playAIAudio("", data.currentQuestion.question);
+            }, 3000);
+          }
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(`HTTP ${response.status}: ${errorData.message || 'Code execution failed'}`);
+      }
+    } catch (error) {
+      console.error("❌ Code execution error:", error);
+      const errorMessage: Message = {
+        id: `error_${Date.now()}`,
+        type: "system",
+        content: `❌ Code execution failed: ${
+          error && typeof error === "object" && "message" in error
+            ? (error as { message: string }).message
+            : String(error)
+        }`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
+  const fetchConversationHistory = async () => {
+    if (!sessionId) return;
+
+    try {
+      const response = await fetch(`${API_URL}/interview/conversation/history/${sessionId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("📜 Conversation history:", data);
+
+        if (data.success && data.conversations) {
+          // Convert conversation history to messages
+          const historyMessages: Message[] = data.conversations.map((conv: any, index: number) => ({
+            id: `history_${index}`,
+            type: conv.sender === 'user' ? 'user' : 'ai',
+            content: conv.message,
+            timestamp: new Date(conv.timestamp),
+          }));
+
+          setMessages(prev => [...prev, ...historyMessages]);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error fetching conversation history:", error);
+    }
+  };
+
+  // Fetch conversation history when session starts
+  useEffect(() => {
+    if (sessionId && interviewStarted) {
+      fetchConversationHistory();
+    }
+  }, [sessionId, interviewStarted]);
+
+  const handleEndInterview = async () => {
+    console.log("🏁 Ending interview...");
+
+    try {
+      const endPayload = {
+        sessionId: sessionId,
+        results: {
+          status: "completed",
+          endTime: new Date().toISOString(),
+          totalTimeSpent: parseInt(duration) * 60 - timeRemaining,
+          questionsAnswered: questionsAnswered,
+          totalQuestions: totalQuestions,
+          completionPercentage: Math.round((questionsAnswered / totalQuestions) * 100)
+        }
+      };
+
+      console.log("📤 Sending end interview payload:", endPayload);
+
+      const response = await fetch(`${API_URL}/interview/end`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify(endPayload),
+      });
+
+      if (response.ok) {
           const result = data.codeExecutionResult;
           
           const codeResultMessage: Message = {
@@ -667,6 +820,7 @@ function VoiceInterviewContent() {
 
     console.log("💻 Executing code...");
 
+    // Add user's code submission to chat
     const codeMessage: Message = {
       id: `code_${Date.now()}`,
       type: "user",
@@ -676,7 +830,7 @@ function VoiceInterviewContent() {
 
     setMessages((prev) => [...prev, codeMessage]);
 
-    // Send code via enhanced conversation API
+    // Send code via enhanced conversation API with proper payload
     await sendCodeToAPI(code, currentQuestionId || `code_${Date.now()}`);
   };
 
@@ -686,72 +840,14 @@ function VoiceInterviewContent() {
     try {
       const endPayload = {
         sessionId: sessionId,
-        userId: user?._id || "688a49e1421a4269f543b115",
-        userName: user?.name || "John Doe",
-        userEmail: user?.email || "john@example.com",
-        status: "completed",
-        endTime: new Date().toISOString(),
         results: {
+          status: "completed",
+          endTime: new Date().toISOString(),
           totalTimeSpent: parseInt(duration) * 60 - timeRemaining,
           questionsAnswered: questionsAnswered,
           totalQuestions: totalQuestions,
-          completionPercentage: Math.round(
-            (questionsAnswered / totalQuestions) * 100
-          ),
-          terminationReason: timeRemaining <= 0 ? "time_up" : "user_ended",
-          detailedAnalysis: {
-            strengths: ["Good communication", "Clear responses"],
-            improvements: ["Practice more technical concepts"],
-            recommendations: ["Continue practicing with AI interviews"]
-          }
-        },
-        scoreboard: {
-          totalQuestions: totalQuestions,
-          questionsAnswered: questionsAnswered,
-          correctAnswers: Math.floor(questionsAnswered * 0.8),
-          incorrectAnswers: Math.floor(questionsAnswered * 0.2),
-          skippedQuestions: totalQuestions - questionsAnswered,
-          accuracyRate: 80,
-          averageResponseTime: 15.5,
-          totalTimeSpent: parseInt(duration) * 60 - timeRemaining,
-          performanceGrade: "B+",
-          detailedScores: {
-            technical: 85,
-            communication: 88,
-            problemSolving: 82,
-            codeQuality: hasCodeEditor ? 87 : 0,
-            timeManagement: 90
-          },
-          questionBreakdown: messages
-            .filter(m => m.type === 'ai' && !m.content.includes('Hello'))
-            .slice(0, questionsAnswered)
-            .map((msg, index) => ({
-              questionId: `q_${index + 1}`,
-              question: msg.content,
-              userAnswer: messages.find(m => 
-                m.type === 'user' && 
-                new Date(m.timestamp) > new Date(msg.timestamp)
-              )?.content || "No answer provided",
-              correctAnswer: "Sample correct answer",
-              isCorrect: Math.random() > 0.3,
-              responseTime: 15.5,
-              difficulty: level === 'beginner' ? 'easy' : level === 'intermediate' ? 'medium' : 'hard',
-              category: category
-            }))
-        },
-        conversationHistory: messages.map((msg) => ({
-          timestamp: msg.timestamp.toISOString(),
-          sender: msg.type === 'user' ? 'user' : 'ai',
-          message: msg.content,
-          questionId: currentQuestionId,
-          messageType: msg.type === 'ai' ? 'question' : 'answer',
-          metadata: {
-            responseTime: 15.5,
-            confidence: 0.95,
-            followUp: false
-          }
-        })),
-        questionIds: Array.from({ length: questionsAnswered }, (_, i) => `q_${i + 1}`)
+          completionPercentage: Math.round((questionsAnswered / totalQuestions) * 100)
+        }
       };
 
       console.log("📤 Sending end interview payload:", endPayload);
@@ -768,8 +864,18 @@ function VoiceInterviewContent() {
       if (response.ok) {
         const result = await response.json();
         console.log("✅ Interview ended successfully:", result);
+        
+        // Store session results for results page
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('lastInterviewResults', JSON.stringify({
+            sessionId: sessionId,
+            results: result.results,
+            endTime: result.endTime
+          }));
+        }
       } else {
-        console.error("❌ Failed to end interview:", response.status);
+        const errorData = await response.json();
+        console.error("❌ Failed to end interview:", response.status, errorData);
       }
     } catch (error) {
       console.error("❌ Error ending interview:", error);
