@@ -650,47 +650,43 @@ function VoiceInterviewContent() {
       });
 
       if (response.ok) {
-          const result = data.codeExecutionResult;
-          
-          const codeResultMessage: Message = {
-            id: `code_result_${Date.now()}`,
-            type: "ai",
-            content: `**Code Execution Results:**\n- Status: ${result.success ? '✅ Success' : '❌ Failed'}\n- Output: ${result.output}\n- Execution Time: ${result.executionTime}ms\n- Memory Usage: ${result.memory}\n\n**Feedback:**\n- Score: ${result.feedback?.score || 0}/100\n- Assessment: ${result.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${result.feedback?.message || 'No feedback available'}\n${result.feedback?.suggestions ? '\n- Suggestions: ' + result.feedback.suggestions.join(', ') : ''}`,
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, codeResultMessage]);
-
-          // Play AI feedback audio
-          if (data.aiResponse) {
-            playAIAudio("", data.aiResponse);
-          } else {
-            playAIAudio("", result.feedback?.message || "Code executed successfully!");
-          }
-
-          // Update progress
-          if (data.progress) {
-            setQuestionsAnswered(data.progress.questionsAnswered);
-            setInterviewProgress(data.progress.completionPercentage);
-          }
+        const result = await response.json();
+        console.log("✅ Interview ended successfully:", result);
+        
+        // Store session results for results page
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('lastInterviewResults', JSON.stringify({
+            sessionId: sessionId,
+            results: result.results,
+            endTime: result.endTime
+          }));
         }
       } else {
         const errorData = await response.json();
-        throw new Error(`HTTP ${response.status}: ${errorData.message || 'Code execution failed'}`);
+        console.error("❌ Failed to end interview:", response.status, errorData);
       }
     } catch (error) {
-      console.error("❌ Code execution error:", error);
-      const errorMessage: Message = {
-        id: `error_${Date.now()}`,
-        type: "system",
-        content: `❌ Code execution failed: ${
-          error && typeof error === "object" && "message" in error
-            ? (error as { message: string }).message
-            : String(error)
-        }`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      console.error("❌ Error ending interview:", error);
     }
+
+    // Cleanup media streams
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((track) => track.stop());
+      setMediaStream(null);
+    }
+
+    // Exit fullscreen
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch (error) {
+        console.error("Error exiting fullscreen:", error);
+      }
+    }
+
+    setInterviewStarted(false);
+    setIsFullscreen(false);
+    router.push("/learner/interview/results");
   };
 
   const startInterview = async () => {
@@ -832,73 +828,6 @@ function VoiceInterviewContent() {
 
     // Send code via enhanced conversation API with proper payload
     await sendCodeToAPI(code, currentQuestionId || `code_${Date.now()}`);
-  };
-
-  const handleEndInterview = async () => {
-    console.log("🏁 Ending interview...");
-
-    try {
-      const endPayload = {
-        sessionId: sessionId,
-        results: {
-          status: "completed",
-          endTime: new Date().toISOString(),
-          totalTimeSpent: parseInt(duration) * 60 - timeRemaining,
-          questionsAnswered: questionsAnswered,
-          totalQuestions: totalQuestions,
-          completionPercentage: Math.round((questionsAnswered / totalQuestions) * 100)
-        }
-      };
-
-      console.log("📤 Sending end interview payload:", endPayload);
-
-      const response = await fetch(`${API_URL}/interview/end`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify(endPayload),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log("✅ Interview ended successfully:", result);
-        
-        // Store session results for results page
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('lastInterviewResults', JSON.stringify({
-            sessionId: sessionId,
-            results: result.results,
-            endTime: result.endTime
-          }));
-        }
-      } else {
-        const errorData = await response.json();
-        console.error("❌ Failed to end interview:", response.status, errorData);
-      }
-    } catch (error) {
-      console.error("❌ Error ending interview:", error);
-    }
-
-    // Cleanup media streams
-    if (mediaStream) {
-      mediaStream.getTracks().forEach((track) => track.stop());
-      setMediaStream(null);
-    }
-
-    // Exit fullscreen
-    if (document.fullscreenElement) {
-      try {
-        await document.exitFullscreen();
-      } catch (error) {
-        console.error("Error exiting fullscreen:", error);
-      }
-    }
-
-    setInterviewStarted(false);
-    setIsFullscreen(false);
-    router.push("/learner/interview/results");
   };
 
   const downloadTranscript = () => {
