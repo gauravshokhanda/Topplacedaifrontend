@@ -8,9 +8,7 @@ import {
   Video, 
   VideoOff, 
   Phone, 
-  Settings, 
   Play, 
-  Square,
   Send,
   Code,
   Terminal,
@@ -43,7 +41,6 @@ function InterviewSessionContent() {
   const hasCodeEditor = searchParams.get('hasCodeEditor') === 'true';
 
   // State management
-  const [isRecording, setIsRecording] = useState(false);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
@@ -146,7 +143,6 @@ function InterviewSessionContent() {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent common shortcuts that could be used to cheat
       if (
         (e.ctrlKey || e.metaKey) && 
         (e.key === 't' || e.key === 'n' || e.key === 'w' || e.key === 'r' || 
@@ -157,7 +153,6 @@ function InterviewSessionContent() {
         setShowWarning(true);
       }
       
-      // Prevent F12, F11, etc.
       if (e.key.startsWith('F') && e.key !== 'F5') {
         e.preventDefault();
         setWarningMessage('Function keys are disabled during the interview.');
@@ -207,7 +202,6 @@ function InterviewSessionContent() {
       if (!document.fullscreenElement && interviewStarted) {
         setWarningMessage('Fullscreen mode is required during the interview.');
         setShowWarning(true);
-        // Try to re-enter fullscreen
         setTimeout(() => {
           document.documentElement.requestFullscreen().catch(console.error);
         }, 1000);
@@ -266,7 +260,6 @@ function InterviewSessionContent() {
   useEffect(() => {
     return () => {
       cleanupMediaStreams();
-      // Exit fullscreen
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(console.error);
       }
@@ -344,7 +337,6 @@ function InterviewSessionContent() {
         setInterviewStarted(true);
         setIsAISpeaking(true);
         
-        // Set initial question if provided
         if (data.firstQuestion) {
           setCurrentQuestion(data.firstQuestion.question);
           setCurrentQuestionId(data.firstQuestion.id);
@@ -358,7 +350,6 @@ function InterviewSessionContent() {
           setMessages([aiMessage]);
         }
         
-        // Fetch conversation history
         fetchConversationHistory(data.sessionId);
         
         setTimeout(() => {
@@ -541,10 +532,8 @@ function InterviewSessionContent() {
       console.error('Error ending interview:', error);
     }
 
-    // Cleanup media streams
     cleanupMediaStreams();
     
-    // Exit fullscreen
     if (document.fullscreenElement) {
       try {
         await document.exitFullscreen();
@@ -674,14 +663,14 @@ function InterviewSessionContent() {
             <div className="flex items-center justify-center lg:justify-end space-x-2 lg:space-x-4">
               <button
                 onClick={toggleMic}
-                className={`p-2 lg:p-2 rounded-full ${isMicOn ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-red-500/20 text-red-400'}`}
+                className={`p-2 rounded-full ${isMicOn ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-red-500/20 text-red-400'}`}
               >
                 {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
               </button>
               
               <button
                 onClick={toggleCamera}
-                className={`p-2 lg:p-2 rounded-full ${isCameraOn ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-red-500/20 text-red-400'}`}
+                className={`p-2 rounded-full ${isCameraOn ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-red-500/20 text-red-400'}`}
               >
                 {isCameraOn ? <Video size={20} /> : <VideoOff size={20} />}
               </button>
@@ -699,7 +688,6 @@ function InterviewSessionContent() {
                 onClick={handleEndInterview}
                 className="bg-red-500 hover:bg-red-600 text-white px-3 lg:px-4 py-2 rounded-lg flex items-center space-x-1 lg:space-x-2 text-sm lg:text-base"
               >
-                <Phone size={14} lg:size={16} />
                 <Phone size={16} />
                 <span className="hidden sm:inline">End Interview</span>
                 <span className="sm:hidden">End</span>
@@ -878,7 +866,14 @@ function InterviewSessionContent() {
 
 export default function InterviewSessionPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00FFB2] mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading interview session...</p>
+        </div>
+      </div>
+    }>
       <InterviewSessionContent />
     </Suspense>
   );
