@@ -655,7 +655,7 @@ function InterviewSessionContent() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-0">
             <div className="flex flex-wrap items-center gap-3 lg:gap-4">
               <div className="flex items-center space-x-2">
-                <Clock size={16} lg:size={20} className="text-[#00FFB2]" />
+                <Clock size={20} className="text-[#00FFB2]" />
                 <span className="font-mono text-base lg:text-lg">{formatTime(timeRemaining)}</span>
               </div>
               <div className="text-xs lg:text-sm text-gray-400">
@@ -676,14 +676,14 @@ function InterviewSessionContent() {
                 onClick={toggleMic}
                 className={`p-2 lg:p-2 rounded-full ${isMicOn ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-red-500/20 text-red-400'}`}
               >
-                {isMicOn ? <Mic size={16} lg:size={20} /> : <MicOff size={16} lg:size={20} />}
+                {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
               </button>
               
               <button
                 onClick={toggleCamera}
                 className={`p-2 lg:p-2 rounded-full ${isCameraOn ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-red-500/20 text-red-400'}`}
               >
-                {isCameraOn ? <Video size={16} lg:size={20} /> : <VideoOff size={16} lg:size={20} />}
+                {isCameraOn ? <Video size={20} /> : <VideoOff size={20} />}
               </button>
               
               {hasCodeEditor && (
@@ -700,6 +700,7 @@ function InterviewSessionContent() {
                 className="bg-red-500 hover:bg-red-600 text-white px-3 lg:px-4 py-2 rounded-lg flex items-center space-x-1 lg:space-x-2 text-sm lg:text-base"
               >
                 <Phone size={14} lg:size={16} />
+                <Phone size={16} />
                 <span className="hidden sm:inline">End Interview</span>
                 <span className="sm:hidden">End</span>
               </button>
@@ -752,9 +753,9 @@ function InterviewSessionContent() {
                     }`}>
                       <div className="flex items-center space-x-1 lg:space-x-2 mb-1">
                         {message.type === 'user' ? (
-                          <User size={12} lg:size={16} />
+                          <User size={16} />
                         ) : (
-                          <Bot size={12} lg:size={16} className="text-[#00FFB2]" />
+                          <Bot size={16} className="text-[#00FFB2]" />
                         )}
                         <span className="text-xs opacity-70">
                           {message.timestamp.toLocaleTimeString()}
@@ -784,7 +785,7 @@ function InterviewSessionContent() {
                     disabled={!interviewStarted || isAISpeaking || !userInput.trim()}
                     className="btn-primary px-3 lg:px-4 py-2 disabled:opacity-50"
                   >
-                    <Send size={14} lg:size={16} />
+                    <Send size={16} />
                   </button>
                 </div>
               </div>
