@@ -30,8 +30,9 @@ export async function POST(request: NextRequest) {
 
     console.log('🎤 Making Google Speech-to-Text API call...');
 
+    const googleSpeechApiUrl = process.env.GOOGLE_SPEECH_API_URL || 'https://speech.googleapis.com/v1';
     const response = await fetch(
-      `https://speech.googleapis.com/v1/speech:recognize?key=${googleApiKey}`,
+      `${googleSpeechApiUrl}/speech:recognize?key=${googleApiKey}`,
       {
         method: 'POST',
         headers: {

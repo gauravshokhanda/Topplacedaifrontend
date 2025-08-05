@@ -46,8 +46,9 @@ export async function POST(request: NextRequest) {
   console.log(`🔊 TTS request: ${text.slice(0, 60)}...`);
 
   try {
+    const elevenLabsApiUrl = process.env.ELEVENLABS_API_URL || 'https://api.elevenlabs.io/v1';
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`,
+      `${elevenLabsApiUrl}/text-to-speech/${voice_id}`,
       {
         method: 'POST',
         headers: {
