@@ -1,290 +1,222 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef, Suspense, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import {
-  Mic,
-  MicOff,
-  Video,
-  VideoOff,
-  Phone,
-  Play,
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { 
+  Mic, 
+  MicOff, 
+  Video, 
+  VideoOff, 
+  Phone, 
+  Settings, 
+  Play, 
   Square,
   Send,
   Code,
   Terminal,
+  FileText,
   Clock,
   User,
   Bot,
   AlertTriangle,
-  Download,
-  Volume2,
-  VolumeX,
-  Pause,
-  Maximize2,
-  Minimize2,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
-import Navbar from "@/components/Navbar";
-import CodeEditor from "@/components/CodeEditor";
-import AIAvatar from "@/components/AIAvatar";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
-import { io, Socket } from "socket.io-client";
+  X
+} from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import CodeEditor from '@/components/CodeEditor';
+import AIAvatar from '@/components/AIAvatar';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
-// Your backend URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-interface Message {
-  id: string;
-  type: "ai" | "user" | "system";
-  content: string;
-  timestamp: Date;
-  audioUrl?: string;
-  isPlaying?: boolean;
-}
-
-function VoiceInterviewContent() {
+function InterviewSessionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
   const { user, token } = useSelector((state: RootState) => state.auth);
 
   // Interview configuration
-  const level = searchParams.get("level") || "mid";
-  const category = searchParams.get("category") || "fullstack";
-  const duration = searchParams.get("duration") || "30";
-  const hasCodeEditor = searchParams.get("hasCodeEditor") === "true";
+  const level = searchParams.get('level');
+  const category = searchParams.get('category');
+  const duration = searchParams.get('duration');
+  const hasCodeEditor = searchParams.get('hasCodeEditor') === 'true';
 
   // State management
   const [isRecording, setIsRecording] = useState(false);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState(parseInt(duration) * 60);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [code, setCode] = useState("");
-  const [language, setLanguage] = useState("javascript");
+  const [timeRemaining, setTimeRemaining] = useState(parseInt(duration || '45') * 60);
+  const [currentQuestion, setCurrentQuestion] = useState('');
+  const [currentQuestionId, setCurrentQuestionId] = useState('');
+  const [sessionId, setSessionId] = useState('');
+  const [messages, setMessages] = useState<Array<{
+    id: string;
+    type: 'ai' | 'user';
+    content: string;
+    timestamp: Date;
+  }>>([]);
+  const [userInput, setUserInput] = useState('');
+  const [code, setCode] = useState('');
+  const [language, setLanguage] = useState('javascript');
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
-  const [warningMessage, setWarningMessage] = useState("");
+  const [warningMessage, setWarningMessage] = useState('');
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [questionsAnswered, setQuestionsAnswered] = useState(0);
-  const [interviewProgress, setInterviewProgress] = useState(0);
-  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [showCodeEditor, setShowCodeEditor] = useState(false);
-  const [recognition, setRecognition] = useState<any>(null);
-  const [speechSynthesis, setSpeechSynthesis] = useState<any>(null);
+  const [showMobileCodeEditor, setShowMobileCodeEditor] = useState(false);
+  const [progress, setProgress] = useState({
+    questionsAnswered: 0,
+    totalQuestions: 6,
+    completionPercentage: 0
+  });
 
-  const [sessionId, setSessionId] = useState<string>("");
-  const [totalQuestions, setTotalQuestions] = useState(6);
-  const [currentQuestionNumber, setCurrentQuestionNumber] = useState(0);
-  const [currentQuestionId, setCurrentQuestionId] = useState<string>("");
+  // Cleanup media streams
+  const cleanupMediaStreams = useCallback(() => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => {
+        track.stop();
+        console.log(`Stopped ${track.kind} track`);
+      });
+      setMediaStream(null);
+    }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    setIsMicOn(false);
+    setIsCameraOn(false);
+  }, [mediaStream]);
 
-  // Build interview payload from user data
-  const buildInterviewPayload = () => {
-    return {
-      user: {
-        id: user?._id || "user123",
-        name: user?.name || "John Doe",
-        email: user?.email || "john@example.com",
-        role: user?.role || "user",
-        experience: user?.experience || "3 years in software development",
-        skills: user?.tech_stack ? user.tech_stack.split(',').map(s => s.trim()) : ["JavaScript", "React", "Node.js"],
-        goals: user?.goals || "Improve technical interview skills",
-        education: user?.education ? (Array.isArray(user.education) ? user.education : []) : [
-          {
-            degree: "Bachelor of Computer Science",
-            institution: "University",
-            year: 2020
-          }
-        ],
-        workExperience: user?.work_experience ? (Array.isArray(user.work_experience) ? user.work_experience : []) : [
-          {
-            title: "Software Developer",
-            company: "Tech Company",
-            duration: "2 years",
-            description: "Full-stack development"
-          }
-        ],
-        profileCompletion: user?.profile_completion || 75
-      },
-      configuration: {
-        level: level === 'entry' ? 'beginner' : level === 'mid' ? 'intermediate' : level === 'senior' ? 'advanced' : 'intermediate',
-        category: category,
-        duration: parseInt(duration) * 60,
-        language: language,
-        hasCodeEditor: hasCodeEditor,
-        isFreeInterview: true
-      },
-      context: {
-        sessionId: `session_${Date.now()}_${user?._id || 'user123'}`,
-        startTime: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        isFreeInterview: true
+  // Check free trial usage
+  useEffect(() => {
+    const checkFreeTrialUsage = async () => {
+      try {
+        const response = await fetch(`${API_URL}/users/${user?._id}/interview-usage`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        
+        if (data.freeInterviewsUsed >= 2 && !data.hasPaidPlan) {
+          setWarningMessage('You have used your 2 free interviews. Please upgrade to continue.');
+          setShowWarning(true);
+          setTimeout(() => {
+            router.push('/pricing');
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('Error checking trial usage:', error);
       }
     };
-  };
 
-  // Initialize Google Speech Recognition
+    if (user?._id && token) {
+      checkFreeTrialUsage();
+    }
+  }, [user, token, router]);
+
+  // Prevent tab switching and navigation
   useEffect(() => {
-    if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
-      const SpeechRecognition =
-        (window as any).webkitSpeechRecognition ||
-        (window as any).SpeechRecognition;
-      const recognitionInstance = new SpeechRecognition();
+    if (!interviewStarted) return;
 
-      recognitionInstance.continuous = false;
-      recognitionInstance.interimResults = false;
-      recognitionInstance.lang = "en-US";
-
-      recognitionInstance.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        console.log("🎤 Speech recognition result:", transcript);
-        setTranscript(transcript);
-
-        // Add user message
-        const userMessage: Message = {
-          id: `user_${Date.now()}`,
-          type: "user",
-          content: transcript,
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, userMessage]);
-
-        // Send answer via enhanced conversation API
-        if (sessionId) {
-          console.log("📤 Sending answer via enhanced API:", transcript);
-          sendAnswerToAPI(transcript);
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setTabSwitchCount(prev => prev + 1);
+        setWarningMessage(`Warning: Tab switching detected! This is attempt ${tabSwitchCount + 1}. Your interview may be terminated.`);
+        setShowWarning(true);
+        
+        if (tabSwitchCount >= 2) {
+          setWarningMessage('Interview terminated due to multiple tab switches. This violates interview guidelines.');
+          setShowWarning(true);
+          setTimeout(() => {
+            handleEndInterview();
+          }, 2000);
         }
-      };
-
-      recognitionInstance.onerror = (event: any) => {
-        console.error("❌ Speech recognition error:", event.error);
-        setTranscript("Error recognizing speech. Please try again.");
-        setIsListening(false);
-      };
-
-      recognitionInstance.onend = () => {
-        console.log("🛑 Speech recognition ended");
-        setIsListening(false);
-      };
-
-      setRecognition(recognitionInstance);
-    }
-
-    // Initialize Speech Synthesis
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      setSpeechSynthesis(window.speechSynthesis);
-    }
-  }, [sessionId, currentQuestionId]);
-
-  // Text-to-Speech Audio Play
-  const playAIAudio = async (audioUrl: string, text: string) => {
-    console.log("🔊 Playing AI audio:", text);
-    setIsAISpeaking(true);
-    setCurrentAudioUrl(audioUrl);
-    setIsAudioPlaying(true);
-
-    try {
-      // Call ElevenLabs API directly
-      const response = await fetch('/api/text-to-speech', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          text,
-          voice_id: 'EXAVITQu4vr4xnSDxMaL', // Sarah voice
-          model_id: 'eleven_monolingual_v1'
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('🔊 ElevenLabs TTS API response:', data);
-
-        if (data.useBrowserTTS && speechSynthesis) {
-          // Use browser's built-in speech synthesis
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.rate = 0.9;
-          utterance.pitch = 1;
-          utterance.volume = 1;
-
-          // Get a female voice if available
-          const voices = speechSynthesis.getVoices();
-          const femaleVoice = voices.find(
-            (voice: { name: string | string[]; gender: string }) =>
-              voice.name.includes("Female") ||
-              voice.name.includes("Samantha") ||
-              voice.name.includes("Karen") ||
-              voice.gender === "female"
-          );
-
-          if (femaleVoice) {
-            utterance.voice = femaleVoice;
-          }
-
-          utterance.onend = () => {
-            setIsAISpeaking(false);
-            setIsAudioPlaying(false);
-            setCurrentAudioUrl(null);
-          };
-
-          utterance.onerror = (event) => {
-            console.error('Speech synthesis error:', event);
-            setIsAISpeaking(false);
-            setIsAudioPlaying(false);
-            setCurrentAudioUrl(null);
-          };
-
-          speechSynthesis.speak(utterance);
-        } else if (data.audioUrl && data.audioContent) {
-          // Use ElevenLabs TTS audio
-          const audio = new Audio(data.audioUrl);
-          audio.onerror = (error) => {
-            console.error('Audio playback error:', error);
-            setIsAISpeaking(false);
-            setIsAudioPlaying(false);
-            setCurrentAudioUrl(null);
-          };
-          audio.onended = () => {
-            setIsAISpeaking(false);
-            setIsAudioPlaying(false);
-            setCurrentAudioUrl(null);
-          };
-          audio.play().catch(error => {
-            console.error('Audio play failed:', error);
-            setIsAISpeaking(false);
-            setIsAudioPlaying(false);
-            setCurrentAudioUrl(null);
-          });
-        } else {
-          throw new Error('No audio content from ElevenLabs or browser TTS available');
-        }
-      } else {
-        const errorData = await response.json();
-        throw new Error(`ElevenLabs TTS API failed: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      console.error("❌ ElevenLabs TTS error, using simulation fallback:", error);
-      // Fallback to simulation
-      const duration = Math.random() * 2000 + 3000;
-      setTimeout(() => {
-        setIsAISpeaking(false);
-        setIsAudioPlaying(false);
-        setCurrentAudioUrl(null);
-      }, duration);
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Are you sure you want to leave the interview? Your progress will be lost.';
+      return e.returnValue;
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent common shortcuts that could be used to cheat
+      if (
+        (e.ctrlKey || e.metaKey) && 
+        (e.key === 't' || e.key === 'n' || e.key === 'w' || e.key === 'r' || 
+         e.key === 'Tab' || e.key === 'F12' || e.key === 'I')
+      ) {
+        e.preventDefault();
+        setWarningMessage('Keyboard shortcuts are disabled during the interview.');
+        setShowWarning(true);
+      }
+      
+      // Prevent F12, F11, etc.
+      if (e.key.startsWith('F') && e.key !== 'F5') {
+        e.preventDefault();
+        setWarningMessage('Function keys are disabled during the interview.');
+        setShowWarning(true);
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      setWarningMessage('Right-click is disabled during the interview.');
+      setShowWarning(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [interviewStarted, tabSwitchCount]);
+
+  // Enter fullscreen when interview starts
+  useEffect(() => {
+    if (interviewStarted && !isFullscreen) {
+      const enterFullscreen = async () => {
+        try {
+          await document.documentElement.requestFullscreen();
+          setIsFullscreen(true);
+        } catch (error) {
+          console.error('Failed to enter fullscreen:', error);
+          setWarningMessage('Please enable fullscreen mode for the interview.');
+          setShowWarning(true);
+        }
+      };
+      enterFullscreen();
     }
-  };
+  }, [interviewStarted, isFullscreen]);
+
+  // Handle fullscreen exit
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && interviewStarted) {
+        setWarningMessage('Fullscreen mode is required during the interview.');
+        setShowWarning(true);
+        // Try to re-enter fullscreen
+        setTimeout(() => {
+          document.documentElement.requestFullscreen().catch(console.error);
+        }, 1000);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [interviewStarted]);
 
   // Initialize camera and microphone
   useEffect(() => {
@@ -299,10 +231,8 @@ function VoiceInterviewContent() {
           videoRef.current.srcObject = stream;
         }
       } catch (err) {
-        console.error("❌ Failed to access media devices:", err);
-        setWarningMessage(
-          "Camera and microphone access is required for the interview."
-        );
+        console.error('Failed to access media devices:', err);
+        setWarningMessage('Camera and microphone access is required for the interview.');
         setShowWarning(true);
       }
     }
@@ -315,7 +245,7 @@ function VoiceInterviewContent() {
     if (!interviewStarted) return;
 
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
+      setTimeRemaining(prev => {
         if (prev <= 1) {
           handleEndInterview();
           return 0;
@@ -329,39 +259,29 @@ function VoiceInterviewContent() {
 
   // Auto-scroll messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Update progress
-  useEffect(() => {
-    const progress =
-      totalQuestions > 0 ? (questionsAnswered / totalQuestions) * 100 : 0;
-    setInterviewProgress(progress);
-  }, [questionsAnswered, totalQuestions]);
 
   // Cleanup on component unmount
   useEffect(() => {
     return () => {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => track.stop());
-      }
+      cleanupMediaStreams();
+      // Exit fullscreen
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(console.error);
       }
     };
-  }, [mediaStream]);
+  }, [cleanupMediaStreams]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const toggleMic = () => {
     if (mediaStream) {
-      mediaStream.getAudioTracks().forEach((track) => {
+      mediaStream.getAudioTracks().forEach(track => {
         track.enabled = !isMicOn;
       });
       setIsMicOn(!isMicOn);
@@ -370,517 +290,307 @@ function VoiceInterviewContent() {
 
   const toggleCamera = () => {
     if (mediaStream) {
-      mediaStream.getVideoTracks().forEach((track) => {
+      mediaStream.getVideoTracks().forEach(track => {
         track.enabled = !isCameraOn;
       });
       setIsCameraOn(!isCameraOn);
     }
   };
 
-  const sendAnswerToAPI = async (answer: string) => {
+  const startInterview = async () => {
     try {
-      const conversationPayload = {
-        sessionId: sessionId,
-        message: answer,
-        responseTime: Math.floor(Math.random() * 20) + 5,
-        metadata: {
+      const initPayload = {
+        user: {
+          id: user?._id || 'demo-user',
+          name: user?.name || 'Demo User',
+          email: user?.email || 'demo@example.com',
+          role: 'user',
+          experience: user?.experience || '3 years in software development',
+          skills: user?.tech_stack ? user.tech_stack.split(',') : ['JavaScript', 'React', 'Node.js'],
+          goals: user?.goals || 'Improve interview skills',
+          education: user?.education ? [user.education] : [],
+          workExperience: [],
+          profileCompletion: user?.profile_completion || 75
+        },
+        configuration: {
+          level: level || 'intermediate',
+          category: category || 'fullstack',
+          duration: parseInt(duration || '30') * 60,
+          language: 'javascript',
+          hasCodeEditor: hasCodeEditor,
+          isFreeInterview: true
+        },
+        context: {
+          sessionId: `session_${Date.now()}_${user?._id}`,
+          startTime: new Date().toISOString(),
           userAgent: navigator.userAgent,
-          deviceType: "desktop"
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       };
 
-      console.log("📤 Sending conversation payload:", conversationPayload);
-
-      const response = await fetch(`${API_URL}/interview/conversation/enhanced`, {
-        method: "POST",
+      const response = await fetch(`${API_URL}/interview/start`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
         },
-        body: JSON.stringify(conversationPayload),
+        body: JSON.stringify(initPayload)
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("✅ Conversation response:", data);
-
-        if (data.success) {
-          const aiMessage: Message = {
-            id: data.messageId || `ai_${Date.now()}`,
-            type: "ai",
-            content: data.aiResponse || "Thank you for your response. Let me continue with the next question.",
-            timestamp: new Date(),
+      const data = await response.json();
+      
+      if (data.success && data.sessionId) {
+        setSessionId(data.sessionId);
+        setInterviewStarted(true);
+        setIsAISpeaking(true);
+        
+        // Set initial question if provided
+        if (data.firstQuestion) {
+          setCurrentQuestion(data.firstQuestion.question);
+          setCurrentQuestionId(data.firstQuestion.id);
+          
+          const aiMessage = {
+            id: Date.now().toString(),
+            type: 'ai' as const,
+            content: data.message + '\n\n' + data.firstQuestion.question,
+            timestamp: new Date()
           };
-          setMessages((prev) => [...prev, aiMessage]);
-
-          // Play AI audio response
-          playAIAudio("", data.aiResponse || "Thank you for your response.");
-
-          // Update progress from API response
-          if (data.progress) {
-            setQuestionsAnswered(data.progress.questionsAnswered);
-            setTotalQuestions(data.progress.totalQuestions);
-            setInterviewProgress(data.progress.completionPercentage);
-          }
-
-          // Update current question if provided
-          if (data.currentQuestion) {
-            setCurrentQuestionNumber(data.currentQuestion.questionNumber || currentQuestionNumber + 1);
-            setCurrentQuestionId(data.currentQuestion.id || `q_${Date.now()}`);
-            
-            // Add the new question as a message
-            const questionMessage: Message = {
-              id: data.currentQuestion.id || `question_${Date.now()}`,
-              type: "ai",
-              content: data.currentQuestion.question,
-              timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, questionMessage]);
-            
-            // Play the new question audio
-            setTimeout(() => {
-              playAIAudio("", data.currentQuestion.question);
-            }, 2000);
-          }
-
-          // Handle code execution results if present
-          if (data.codeExecutionResult) {
-            const result = data.codeExecutionResult;
-            const codeResultMessage: Message = {
-              id: `code_result_${Date.now()}`,
-              type: "system",
-              content: `**Code Execution Results:**\n- Status: ${result.success ? '✅ Success' : '❌ Failed'}\n- Output: ${result.output}\n- Execution Time: ${result.executionTime}ms\n- Memory Usage: ${result.memory}\n\n**Feedback:**\n- Score: ${result.feedback?.score || 0}/100\n- Assessment: ${result.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${result.feedback?.message || 'No feedback available'}\n${result.feedback?.suggestions ? '\n- Suggestions: ' + result.feedback.suggestions.join(', ') : ''}`,
-              timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, codeResultMessage]);
-          }
+          setMessages([aiMessage]);
         }
-      } else {
-        const errorData = await response.json();
-        throw new Error(`HTTP ${response.status}: ${errorData.message || 'Unknown error'}`);
+        
+        // Fetch conversation history
+        fetchConversationHistory(data.sessionId);
+        
+        setTimeout(() => {
+          setIsAISpeaking(false);
+        }, 3000);
       }
     } catch (error) {
-      console.error("❌ Error sending answer:", error);
-      const errorMessage: Message = {
-        id: `error_${Date.now()}`,
-        type: "system",
-        content: `❌ Failed to send answer: ${
-          error && typeof error === "object" && "message" in error
-            ? (error as { message: string }).message
-            : String(error)
-        }`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      console.error('Error starting interview:', error);
+      setWarningMessage('Failed to start interview. Please try again.');
+      setShowWarning(true);
     }
   };
 
-  const sendCodeToAPI = async (code: string, questionId: string) => {
-    try {
-      const codePayload = {
-        sessionId: sessionId,
-        message: "Here's my solution to the coding question",
-        questionId: questionId,
-        codeContext: {
-          questionId: questionId,
-          code: code,
-          language: language,
-          isCodeSubmission: true
-        },
-        responseTime: Math.floor(Math.random() * 180) + 120
-      };
-
-      console.log("💻 Sending code submission:", codePayload);
-
-      const response = await fetch(`${API_URL}/interview/conversation/enhanced`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify(codePayload),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("✅ Code execution response:", data);
-
-        if (data.success) {
-          // Add AI response message
-          if (data.aiResponse) {
-            const aiMessage: Message = {
-              id: data.messageId || `ai_code_${Date.now()}`,
-              type: "ai",
-              content: data.aiResponse,
-              timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, aiMessage]);
-            
-            // Play AI feedback audio
-            playAIAudio("", data.aiResponse);
-          }
-
-          // Handle code execution results
-          if (data.codeExecutionResult) {
-            const result = data.codeExecutionResult;
-            
-            const codeResultMessage: Message = {
-              id: `code_detailed_${Date.now()}`,
-              type: "system",
-              content: `**Code Execution Results:**\n- Status: ${result.success ? '✅ Success' : '❌ Failed'}\n- Output: ${result.output}\n- Execution Time: ${result.executionTime}ms\n- Memory Usage: ${result.memory}\n\n**Feedback:**\n- Score: ${result.feedback?.score || 0}/100\n- Assessment: ${result.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${result.feedback?.message || 'No feedback available'}\n${result.feedback?.suggestions ? '\n- Suggestions: ' + result.feedback.suggestions.join(', ') : ''}`,
-              timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, codeResultMessage]);
-          }
-
-          // Update progress
-          if (data.progress) {
-            setQuestionsAnswered(data.progress.questionsAnswered);
-            setTotalQuestions(data.progress.totalQuestions);
-            setInterviewProgress(data.progress.completionPercentage);
-          }
-
-          // Handle next question
-          if (data.currentQuestion) {
-            setCurrentQuestionNumber(data.currentQuestion.questionNumber || currentQuestionNumber + 1);
-            setCurrentQuestionId(data.currentQuestion.id || `q_${Date.now()}`);
-            
-            // Add the new question as a message after a delay
-            setTimeout(() => {
-              const questionMessage: Message = {
-                id: data.currentQuestion.id || `question_${Date.now()}`,
-                type: "ai",
-                content: data.currentQuestion.question,
-                timestamp: new Date(),
-              };
-              setMessages((prev) => [...prev, questionMessage]);
-              
-              // Play the new question audio
-              playAIAudio("", data.currentQuestion.question);
-            }, 3000);
-          }
-        }
-      } else {
-        const errorData = await response.json();
-        throw new Error(`HTTP ${response.status}: ${errorData.message || 'Code execution failed'}`);
-      }
-    } catch (error) {
-      console.error("❌ Code execution error:", error);
-      const errorMessage: Message = {
-        id: `error_${Date.now()}`,
-        type: "system",
-        content: `❌ Code execution failed: ${
-          error && typeof error === "object" && "message" in error
-            ? (error as { message: string }).message
-            : String(error)
-        }`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    }
-  };
-
-  const fetchConversationHistory = async () => {
-    if (!sessionId) return;
-
+  const fetchConversationHistory = async (sessionId: string) => {
     try {
       const response = await fetch(`${API_URL}/interview/conversation/history/${sessionId}`, {
-        method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
+          'ngrok-skip-browser-warning': 'true'
+        }
       });
-
+      
       if (response.ok) {
         const data = await response.json();
-        console.log("📜 Conversation history:", data);
-
-        if (data.success && data.conversations) {
-          // Convert conversation history to messages
-          const historyMessages: Message[] = data.conversations.map((conv: any, index: number) => ({
-            id: `history_${index}`,
-            type: conv.sender === 'user' ? 'user' : 'ai',
+        if (data.conversations) {
+          const historyMessages = data.conversations.map((conv: any) => ({
+            id: `${conv.timestamp}_${conv.sender}`,
+            type: conv.sender,
             content: conv.message,
             timestamp: new Date(conv.timestamp)
           }));
-
-          setMessages(prev => [...prev, ...historyMessages]);
+          setMessages(prev => [...historyMessages, ...prev]);
         }
       }
     } catch (error) {
-      console.error("❌ Error fetching conversation history:", error);
+      console.error('Error fetching conversation history:', error);
     }
   };
 
-  // Fetch conversation history when session starts
-  useEffect(() => {
-    if (sessionId && interviewStarted) {
-      fetchConversationHistory();
-    }
-  }, [sessionId, interviewStarted]);
+  const sendMessage = async () => {
+    if (!userInput.trim() || !sessionId) return;
 
-  const handleEndInterview = async () => {
-    console.log("🏁 Ending interview...");
+    const userMessage = {
+      id: Date.now().toString(),
+      type: 'user' as const,
+      content: userInput,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    const messageToSend = userInput;
+    setUserInput('');
+    setIsAISpeaking(true);
 
     try {
-      const endPayload = {
-        sessionId: sessionId,
-        feedback: "Great interview experience!"
+      const payload = {
+        sessionId,
+        message: messageToSend,
+        responseTime: 5,
+        metadata: {
+          userAgent: navigator.userAgent,
+          deviceType: 'desktop'
+        }
       };
 
-      console.log("📤 Sending end interview payload:", endPayload);
-
-      const response = await fetch(`${API_URL}/interview/end`, {
-        method: "POST",
+      const response = await fetch(`${API_URL}/interview/conversation/enhanced`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
         },
-        body: JSON.stringify(endPayload),
+        body: JSON.stringify(payload)
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log("✅ Interview ended successfully:", result);
+      const data = await response.json();
+      
+      if (data.success && data.aiResponse) {
+        const aiMessage = {
+          id: (Date.now() + 1).toString(),
+          type: 'ai' as const,
+          content: data.aiResponse,
+          timestamp: new Date()
+        };
+
+        setMessages(prev => [...prev, aiMessage]);
         
-        // Store session results for results page
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('lastInterviewResults', JSON.stringify({
-            sessionId: sessionId,
-            endTime: result.endTime,
-            message: result.message
-          }));
+        if (data.currentQuestion) {
+          setCurrentQuestion(data.currentQuestion);
         }
-      } else {
-        const errorData = await response.json();
-        console.error("❌ Failed to end interview:", response.status, errorData);
+        
+        if (data.progress) {
+          setProgress(data.progress);
+        }
       }
     } catch (error) {
-      console.error("❌ Error ending interview:", error);
+      console.error('Error sending message:', error);
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai' as const,
+        content: 'I apologize, but I encountered a technical issue. Let\'s continue with the next question.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsAISpeaking(false);
+    }
+  };
+
+  const runCode = async () => {
+    if (!code.trim() || !sessionId) return;
+
+    try {
+      const payload = {
+        sessionId,
+        message: "Here's my solution to the coding question",
+        questionId: currentQuestionId,
+        codeContext: {
+          questionId: currentQuestionId,
+          code,
+          language,
+          isCodeSubmission: true
+        },
+        responseTime: 300
+      };
+
+      const response = await fetch(`${API_URL}/interview/conversation/enhanced`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        const codeResultMessage = {
+          id: Date.now().toString(),
+          type: 'ai' as const,
+          content: data.aiResponse || 'Code executed successfully!',
+          timestamp: new Date()
+        };
+
+        setMessages(prev => [...prev, codeResultMessage]);
+        
+        if (data.progress) {
+          setProgress(data.progress);
+        }
+      }
+    } catch (error) {
+      console.error('Error executing code:', error);
+      const errorMessage = {
+        id: Date.now().toString(),
+        type: 'ai' as const,
+        content: 'Error executing code. Please try again.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+  };
+
+  const handleEndInterview = async () => {
+    try {
+      if (sessionId) {
+        const payload = {
+          sessionId,
+          feedback: "Interview completed successfully"
+        };
+
+        await fetch(`${API_URL}/interview/end`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+    } catch (error) {
+      console.error('Error ending interview:', error);
     }
 
     // Cleanup media streams
-    if (mediaStream) {
-      mediaStream.getTracks().forEach((track) => track.stop());
-      setMediaStream(null);
-    }
-
+    cleanupMediaStreams();
+    
     // Exit fullscreen
     if (document.fullscreenElement) {
       try {
         await document.exitFullscreen();
       } catch (error) {
-        console.error("Error exiting fullscreen:", error);
+        console.error('Error exiting fullscreen:', error);
       }
     }
-
+    
     setInterviewStarted(false);
     setIsFullscreen(false);
-    router.push("/learner/interview/results");
-  };
-
-  const startInterview = async () => {
-    console.log("🚀 Starting interview...");
-
-    const interviewPayload = buildInterviewPayload();
-    console.log(
-      "📤 Sending interview initialization payload:",
-      interviewPayload
-    );
-
-    try {
-      const response = await fetch(`${API_URL}/interview/start`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify(interviewPayload),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("✅ Interview started:", data);
-
-        // Updated to match your backend response structure
-        if (data.success && data.sessionId) {
-          setSessionId(data.sessionId);
-          setTotalQuestions(6);
-          setCurrentQuestionNumber(1);
-          setCurrentQuestionId("intro1");
-
-          // Add AI welcome message
-          const welcomeMessage: Message = {
-            id: `welcome_${Date.now()}`,
-            type: "ai",
-            content: data.message,
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, welcomeMessage]);
-
-          // Add first question
-          if (data.firstQuestion) {
-            const questionMessage: Message = {
-              id: data.firstQuestion.id || "intro1",
-              type: "ai",
-              content: data.firstQuestion.question,
-              timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, questionMessage]);
-
-            // Play AI audio for the first question
-            playAIAudio("", data.firstQuestion.question);
-            
-            // Set current question details
-            setCurrentQuestionId(data.firstQuestion.id || "intro1");
-            setCurrentQuestionNumber(data.firstQuestion.questionNumber || 1);
-            setTotalQuestions(data.firstQuestion.totalQuestions || 6);
-          }
-        } else {
-          throw new Error(data.message || "Failed to initialize interview");
-        }
-      } else {
-        const errorData = await response.json();
-        throw new Error(`API failed: ${response.status} - ${errorData.message || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error("❌ Failed to start interview:", error);
-
-      const systemMessage: Message = {
-        id: `system_start_${Date.now()}`,
-        type: "system",
-        content: `❌ Failed to start interview: ${
-          error && typeof error === "object" && "message" in error
-            ? (error as { message: string }).message
-            : String(error)
-        }`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, systemMessage]);
-    }
-
-    setInterviewStarted(true);
-  };
-
-  const startListening = async () => {
-    if (!isMicOn) {
-      setWarningMessage("Please enable your microphone to respond.");
-      setShowWarning(true);
-      return;
-    }
-
-    console.log("🎤 Starting speech recognition...");
-    setIsListening(true);
-    setTranscript("Listening...");
-
-    if (recognition) {
-      try {
-        recognition.start();
-      } catch (error) {
-        console.error("❌ Failed to start speech recognition:", error);
-        setIsListening(false);
-        setTranscript("Speech recognition not available. Please try again.");
-      }
-    } else {
-      console.warn("⚠️ Speech recognition not available, using fallback");
-      setIsListening(false);
-      setTranscript("Speech recognition not supported in this browser.");
-    }
-  };
-
-  const stopListening = () => {
-    console.log("🛑 Stopping speech recognition...");
-    if (recognition) {
-      recognition.stop();
-    }
-    setIsListening(false);
-    setTranscript("");
-  };
-
-  const runCode = async () => {
-    if (!code.trim()) {
-      setWarningMessage("Please write some code before running.");
-      setShowWarning(true);
-      return;
-    }
-
-    console.log("💻 Executing code...");
-
-    // Add user's code submission to chat
-    const codeMessage: Message = {
-      id: `code_${Date.now()}`,
-      type: "user",
-      content: `Code submitted:\n\`\`\`${language}\n${code}\n\`\`\``,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, codeMessage]);
-
-    // Send code via enhanced conversation API with proper payload
-    await sendCodeToAPI(code, currentQuestionId || `code_${Date.now()}`);
-  };
-
-  const downloadTranscript = () => {
-    const transcript = messages
-      .map(
-        (msg) =>
-          `[${msg.timestamp.toLocaleTimeString()}] ${msg.type.toUpperCase()}: ${
-            msg.content
-          }`
-      )
-      .join("\n\n");
-
-    const blob = new Blob([transcript], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `interview_transcript_${sessionId || "session"}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const replayAIMessage = (message: Message) => {
-    if (message.content) {
-      playAIAudio("", message.content);
-    }
+    router.push('/learner/interview/results');
   };
 
   const getLanguageOptions = () => {
     switch (category) {
-      case "frontend":
-        return ["javascript", "typescript", "html", "css"];
-      case "backend":
-        return ["javascript", "python", "java", "go"];
-      case "fullstack":
-        return ["javascript", "typescript", "python", "java"];
-      case "sql":
-        return ["sql"];
-      case "data-analyst":
-        return ["python", "r", "sql"];
-      case "aws":
-        return ["yaml", "json", "bash"];
+      case 'frontend':
+        return ['javascript', 'typescript', 'html', 'css'];
+      case 'backend':
+        return ['javascript', 'python', 'java', 'go', 'csharp'];
+      case 'fullstack':
+        return ['javascript', 'typescript', 'python', 'java'];
+      case 'sql':
+        return ['sql'];
+      case 'data-analyst':
+        return ['python', 'r', 'sql'];
+      case 'aws':
+        return ['yaml', 'json', 'bash'];
       default:
-        return ["javascript", "python", "java"];
+        return ['javascript', 'python', 'java'];
     }
   };
 
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
-
+      
       {/* Warning Modal */}
       {showWarning && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center">
-          <div className="glass-card p-8 max-w-md text-center border-2 border-red-500/50">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="glass-card p-6 lg:p-8 max-w-md text-center border-2 border-red-500/50">
             <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-4 text-red-400">
-              Interview Warning
-            </h3>
-            <p className="text-gray-300 mb-6">{warningMessage}</p>
+            <h3 className="text-lg lg:text-xl font-bold mb-4 text-red-400">Interview Warning</h3>
+            <p className="text-gray-300 mb-6 text-sm lg:text-base">{warningMessage}</p>
             <button
               onClick={() => setShowWarning(false)}
-              className="btn-primary px-6 py-2"
+              className="btn-primary px-4 lg:px-6 py-2 text-sm lg:text-base"
             >
               I Understand
             </button>
@@ -888,377 +598,42 @@ function VoiceInterviewContent() {
         </div>
       )}
 
-      <div className="pt-16">
-        {/* Header Bar */}
-        <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 px-3 lg:px-6 py-3 lg:py-4">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-0">
-            <div className="flex flex-wrap items-center gap-2 lg:gap-6">
-              <div className="flex items-center space-x-2">
-                <Clock size={16} className="lg:w-5 lg:h-5 text-[#00FFB2]" />
-                <span className="font-mono text-base lg:text-lg">
-                  {formatTime(timeRemaining)}
-                </span>
-              </div>
-              <div className="text-xs lg:text-sm text-gray-400">
-                Voice Interview • {category?.toUpperCase()} •{" "}
-                {level?.toUpperCase()}
-              </div>
-              <div className="flex items-center space-x-2 flex-1 lg:flex-initial">
-                <span className="text-xs lg:text-sm text-gray-400">Progress:</span>
-                <div className="w-20 lg:w-32 bg-[#1A1A1A] rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-[#00FFB2] to-[#00CC8E] h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${interviewProgress}%` }}
-                  />
+      {/* Mobile Code Editor Overlay */}
+      {showMobileCodeEditor && hasCodeEditor && (
+        <div className="fixed inset-0 bg-black z-50 lg:hidden">
+          <div className="flex flex-col h-full">
+            <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <Code size={20} className="text-[#00FFB2]" />
+                  <span className="font-semibold text-sm">Code Editor</span>
                 </div>
-                <span className="text-xs lg:text-sm text-[#00FFB2]">
-                  {questionsAnswered}/{totalQuestions}
-                </span>
-              </div>
-              {sessionId && (
-                <div className="text-xs text-gray-500 hidden lg:block">
-                  Session: {sessionId.slice(-8)}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-center lg:justify-end space-x-2 lg:space-x-4">
-              <button
-                onClick={toggleMic}
-                className={`p-2 rounded-full ${
-                  isMicOn
-                    ? "bg-[#00FFB2]/20 text-[#00FFB2]"
-                    : "bg-red-500/20 text-red-400"
-                }`}
-              >
-                {isMicOn ? <Mic size={16} className="lg:w-5 lg:h-5" /> : <MicOff size={16} className="lg:w-5 lg:h-5" />}
-              </button>
-
-              <button
-                onClick={toggleCamera}
-                className={`p-2 rounded-full ${
-                  isCameraOn
-                    ? "bg-[#00FFB2]/20 text-[#00FFB2]"
-                    : "bg-red-500/20 text-red-400"
-                }`}
-              >
-                {isCameraOn ? <Video size={16} className="lg:w-5 lg:h-5" /> : <VideoOff size={16} className="lg:w-5 lg:h-5" />}
-              </button>
-
-              <button
-                onClick={downloadTranscript}
-                className="p-2 rounded-full bg-[#00FFB2]/20 text-[#00FFB2] hover:bg-[#00FFB2]/30"
-                title="Download Transcript"
-              >
-                <Download size={16} className="lg:w-5 lg:h-5" />
-              </button>
-
-              {hasCodeEditor && (
-                <button
-                  onClick={() => setShowCodeEditor(!showCodeEditor)}
-                  className="p-2 rounded-full bg-[#00FFB2]/20 text-[#00FFB2] hover:bg-[#00FFB2]/30"
-                  title={
-                    showCodeEditor ? "Hide Code Editor" : "Show Code Editor"
-                  }
-                >
-                  {showCodeEditor ? (
-                    <Minimize2 size={16} className="lg:w-5 lg:h-5" />
-                  ) : (
-                    <Code size={16} className="lg:w-5 lg:h-5" />
-                  )}
-                </button>
-              )}
-
-              <button
-                onClick={handleEndInterview}
-                className="bg-red-500 hover:bg-red-600 text-white px-3 lg:px-4 py-2 rounded-lg flex items-center space-x-1 lg:space-x-2 text-sm lg:text-base"
-              >
-                <Phone size={14} className="lg:w-4 lg:h-4" />
-                <span>End Interview</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex h-[calc(100vh-120px)]">
-          {/* Left Panel - Video and Chat */}
-          <div className="w-full lg:w-1/2 flex flex-col lg:border-r border-[#00FFB2]/20">
-            {/* Video Section */}
-            <div className="h-48 lg:h-1/2 bg-[#0A0A0A] p-2 lg:p-4">
-              <div className="grid grid-cols-2 gap-2 lg:gap-4 h-full">
-                {/* User Video */}
-                <div className="bg-[#111] rounded-lg overflow-hidden relative">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-1 lg:bottom-2 left-1 lg:left-2 bg-black/50 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm">
-                    You
-                  </div>
-                  {isListening && (
-                    <div className="absolute top-1 lg:top-2 right-1 lg:right-2 bg-red-500 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs animate-pulse">
-                      🎤 Recording...
-                    </div>
-                  )}
-                </div>
-
-                {/* AI Avatar */}
-                <div className="bg-[#111] rounded-lg overflow-hidden relative">
-                  <AIAvatar isActive={isAISpeaking} />
-                  <div className="absolute bottom-1 lg:bottom-2 left-1 lg:left-2 bg-black/50 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm">
-                    AI Interviewer
-                  </div>
-                  {isAudioPlaying && (
-                    <div className="absolute top-1 lg:top-2 right-1 lg:right-2 bg-[#00FFB2] px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs text-black">
-                      🔊 Speaking...
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Chat Section */}
-            <div className="flex-1 lg:h-1/2 flex flex-col bg-[#0A0A0A]">
-              <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-2 lg:space-y-4 max-h-64 lg:max-h-none">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.type === "user"
-                        ? "justify-end"
-                        : message.type === "system"
-                        ? "justify-center"
-                        : "justify-start"
-                    }`}
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="bg-[#1A1A1A] border border-gray-600 rounded px-2 py-1 text-xs"
                   >
-                    <div
-                      className={`max-w-[90%] lg:max-w-[80%] p-2 lg:p-3 rounded-lg ${
-                        message.type === "user"
-                          ? "bg-[#00FFB2] text-black"
-                          : message.type === "system"
-                          ? "bg-yellow-500/20 text-yellow-400 text-center"
-                          : "bg-[#1A1A1A] text-white"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center space-x-1 lg:space-x-2">
-                          {message.type === "user" ? (
-                            <User size={14} className="lg:w-4 lg:h-4" />
-                          ) : message.type === "system" ? (
-                            <Bot size={14} className="lg:w-4 lg:h-4 text-yellow-400" />
-                          ) : (
-                            <Bot size={14} className="lg:w-4 lg:h-4 text-[#00FFB2]" />
-                          )}
-                          <span className="text-xs opacity-70">
-                            {message.timestamp.toLocaleTimeString()}
-                          </span>
-                        </div>
-                        {message.type === "ai" && (
-                          <button
-                            onClick={() => replayAIMessage(message)}
-                            className="text-[#00FFB2] hover:text-[#00CC8E] ml-2"
-                            title="Replay Audio"
-                          >
-                            <Volume2 size={12} className="lg:w-3.5 lg:h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="whitespace-pre-wrap text-xs lg:text-sm">
-                        {message.content}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Voice Input Section */}
-              <div className="p-3 lg:p-4 border-t border-[#00FFB2]/20">
-                <div className="flex flex-col space-y-2 lg:space-y-3">
-                  {transcript && (
-                    <div className="bg-[#1A1A1A] p-2 lg:p-3 rounded-lg border border-[#00FFB2]/20">
-                      <div className="text-xs lg:text-sm text-gray-400 mb-1">
-                        Transcript:
-                      </div>
-                      <div className="text-white text-sm lg:text-base">{transcript}</div>
-                    </div>
-                  )}
-
-                  <div className="flex flex-col lg:flex-row items-center justify-center space-y-2 lg:space-y-0 lg:space-x-4">
-                    <button
-                      onClick={isListening ? stopListening : startListening}
-                      disabled={!interviewStarted || isAISpeaking}
-                      className={`w-12 h-12 lg:w-16 lg:h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-                        isListening
-                          ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                          : "bg-[#00FFB2] hover:bg-[#00CC8E]"
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {isListening ? (
-                        <Square size={16} className="lg:w-6 lg:h-6 text-white" />
-                      ) : (
-                        <Mic size={16} className="lg:w-6 lg:h-6 text-black" />
-                      )}
-                    </button>
-
-                    <div className="text-center">
-                      <div className="text-xs lg:text-sm text-gray-400">
-                        {!interviewStarted
-                          ? "Start interview to begin"
-                          : isAISpeaking
-                          ? "AI is speaking..."
-                          : isListening
-                          ? "Recording... Click to stop"
-                          : "Click to speak"}
-                      </div>
-                      {!isMicOn && (
-                        <div className="text-xs text-red-400 mt-1">
-                          Microphone is disabled
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                    {getLanguageOptions().map(lang => (
+                      <option key={lang} value={lang}>
+                        {lang.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={runCode}
+                    className="btn-primary px-3 py-1 text-xs flex items-center space-x-1"
+                  >
+                    <Terminal size={12} />
+                    <span>Run</span>
+                  </button>
+                  <button
+                    onClick={() => setShowMobileCodeEditor(false)}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Panel - Code Editor (if applicable) */}
-          {hasCodeEditor && showCodeEditor ? (
-            <div className="hidden lg:flex lg:w-1/2 flex-col">
-              <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 p-3 lg:p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 lg:space-x-4">
-                    <Code size={18} className="lg:w-5 lg:h-5 text-[#00FFB2]" />
-                    <span className="font-semibold text-sm lg:text-base">Code Editor</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setShowCodeEditor(false)}
-                      className="p-1 rounded bg-[#1A1A1A] hover:bg-[#333] text-gray-400 hover:text-white lg:block hidden"
-                      title="Close Code Editor"
-                    >
-                      <Minimize2 size={14} />
-                    </button>
-                    <select
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="bg-[#1A1A1A] border border-gray-600 rounded px-2 lg:px-3 py-1 text-xs lg:text-sm"
-                    >
-                      {getLanguageOptions().map((lang) => (
-                        <option key={lang} value={lang}>
-                          {lang.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={runCode}
-                      className="btn-primary px-3 lg:px-4 py-1 text-xs lg:text-sm flex items-center space-x-1"
-                    >
-                      <Terminal size={12} className="lg:w-3.5 lg:h-3.5" />
-                      <span>Run</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <CodeEditor
-                  value={code}
-                  onChange={setCode}
-                  language={language}
-                  theme="dark"
-                />
-              </div>
-            </div>
-          ) : hasCodeEditor && !showCodeEditor ? (
-            <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-[#0A0A0A] border-l border-[#00FFB2]/20">
-              <div className="text-center">
-                <Code size={40} className="lg:w-12 lg:h-12 text-gray-500 mx-auto mb-4" />
-                <h3 className="text-lg lg:text-xl font-semibold mb-2">
-                  Code Editor Available
-                </h3>
-                <p className="text-gray-400 text-sm lg:text-base mb-4">
-                  Click the code editor button in the header to open the coding
-                  environment.
-                </p>
-                <div className="bg-[#1A1A1A] p-3 lg:p-4 rounded-lg mb-4">
-                  <h4 className="font-semibold mb-2 text-[#00FFB2] text-sm lg:text-base">Coding Instructions:</h4>
-                  <ul className="text-xs lg:text-sm text-gray-400 space-y-1">
-                    <li>• Write your solution in the code editor</li>
-                    <li>• Click "Submit Code" to execute and get feedback</li>
-                    <li>• AI will provide detailed feedback and scoring</li>
-                    <li>• You can submit multiple times to improve</li>
-                  </ul>
-                </div>
-                <button
-                  onClick={() => setShowCodeEditor(true)}
-                  className="btn-primary flex items-center mx-auto text-sm lg:text-base px-4 lg:px-6 py-2"
-                >
-                  <Code size={14} className="lg:w-4 lg:h-4 mr-2" />
-                  Open Code Editor
-                </button>
-              </div>
-            </div>
-          ) : !hasCodeEditor ? (
-            <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-[#0A0A0A]">
-              <div className="text-center">
-                <Bot size={40} className="lg:w-12 lg:h-12 text-gray-500 mx-auto mb-4" />
-                <h3 className="text-lg lg:text-xl font-semibold mb-2">Voice Interview</h3>
-                <p className="text-gray-400 text-sm lg:text-base mb-4">
-                  This interview focuses on verbal communication and behavioral
-                  questions.
-                </p>
-                <div className="bg-[#1A1A1A] p-3 lg:p-4 rounded-lg">
-                  <h4 className="font-semibold mb-2 text-sm lg:text-base">Interview Tips:</h4>
-                  <ul className="text-xs lg:text-sm text-gray-400 space-y-1">
-                    <li>• Speak clearly and at a moderate pace</li>
-                    <li>• Provide specific examples when possible</li>
-                    <li>• Take a moment to think before answering</li>
-                    <li>• Ask for clarification if needed</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Mobile Code Editor Overlay */}
-        {hasCodeEditor && showCodeEditor && (
-          <div className="lg:hidden fixed inset-0 bg-black z-50 flex flex-col">
-            <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 p-4 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Code size={20} className="text-[#00FFB2]" />
-                <span className="font-semibold">Code Editor</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="bg-[#1A1A1A] border border-gray-600 rounded px-2 py-1 text-sm"
-                >
-                  {getLanguageOptions().map((lang) => (
-                    <option key={lang} value={lang}>
-                      {lang.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={runCode}
-                  className="btn-primary px-3 py-1 text-sm flex items-center space-x-1"
-                >
-                  <Terminal size={14} />
-                  <span>Run</span>
-                </button>
-                <button
-                  onClick={() => setShowCodeEditor(false)}
-                  className="p-2 rounded bg-[#1A1A1A] hover:bg-[#333] text-gray-400 hover:text-white"
-                >
-                  <Minimize2 size={16} />
-                </button>
               </div>
             </div>
             
@@ -1271,43 +646,226 @@ function VoiceInterviewContent() {
               />
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Mobile Code Editor Toggle Button */}
-        {hasCodeEditor && !showCodeEditor && (
-          <button
-            onClick={() => setShowCodeEditor(true)}
-            className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#00FFB2] rounded-full flex items-center justify-center shadow-lg z-40"
-          >
-            <Code size={24} className="text-black" />
-          </button>
-        )}
+      <div className="pt-16">
+        {/* Header Bar */}
+        <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 px-4 lg:px-6 py-3 lg:py-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-0">
+            <div className="flex flex-wrap items-center gap-3 lg:gap-4">
+              <div className="flex items-center space-x-2">
+                <Clock size={16} lg:size={20} className="text-[#00FFB2]" />
+                <span className="font-mono text-base lg:text-lg">{formatTime(timeRemaining)}</span>
+              </div>
+              <div className="text-xs lg:text-sm text-gray-400">
+                {category?.toUpperCase()} • {level?.toUpperCase()} Level
+              </div>
+              {tabSwitchCount > 0 && (
+                <div className="text-xs lg:text-sm text-red-400">
+                  Tab Switches: {tabSwitchCount}/3
+                </div>
+              )}
+              <div className="text-xs lg:text-sm text-[#00FFB2]">
+                Progress: {progress.questionsAnswered}/{progress.totalQuestions}
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-center lg:justify-end space-x-2 lg:space-x-4">
+              <button
+                onClick={toggleMic}
+                className={`p-2 lg:p-2 rounded-full ${isMicOn ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-red-500/20 text-red-400'}`}
+              >
+                {isMicOn ? <Mic size={16} lg:size={20} /> : <MicOff size={16} lg:size={20} />}
+              </button>
+              
+              <button
+                onClick={toggleCamera}
+                className={`p-2 lg:p-2 rounded-full ${isCameraOn ? 'bg-[#00FFB2]/20 text-[#00FFB2]' : 'bg-red-500/20 text-red-400'}`}
+              >
+                {isCameraOn ? <Video size={16} lg:size={20} /> : <VideoOff size={16} lg:size={20} />}
+              </button>
+              
+              {hasCodeEditor && (
+                <button
+                  onClick={() => setShowMobileCodeEditor(true)}
+                  className="lg:hidden bg-[#00FFB2]/20 text-[#00FFB2] p-2 rounded-full"
+                >
+                  <Code size={16} />
+                </button>
+              )}
+              
+              <button
+                onClick={handleEndInterview}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 lg:px-4 py-2 rounded-lg flex items-center space-x-1 lg:space-x-2 text-sm lg:text-base"
+              >
+                <Phone size={14} lg:size={16} />
+                <span className="hidden sm:inline">End Interview</span>
+                <span className="sm:hidden">End</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)]">
+          {/* Left Panel - Video and Chat */}
+          <div className="w-full lg:w-1/2 flex flex-col border-b lg:border-b-0 lg:border-r border-[#00FFB2]/20">
+            {/* Video Section */}
+            <div className="h-48 lg:h-1/2 bg-[#0A0A0A] p-2 lg:p-4">
+              <div className="grid grid-cols-2 gap-2 lg:gap-4 h-full">
+                {/* User Video */}
+                <div className="bg-[#111] rounded-lg overflow-hidden relative">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-1 lg:bottom-2 left-1 lg:left-2 bg-black/50 px-1 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm">
+                    You
+                  </div>
+                </div>
+                
+                {/* AI Avatar */}
+                <div className="bg-[#111] rounded-lg overflow-hidden relative">
+                  <AIAvatar isActive={isAISpeaking} />
+                  <div className="absolute bottom-1 lg:bottom-2 left-1 lg:left-2 bg-black/50 px-1 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm">
+                    AI Interviewer
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chat Section */}
+            <div className="flex-1 flex flex-col bg-[#0A0A0A]">
+              <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-2 lg:space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[85%] lg:max-w-[80%] p-2 lg:p-3 rounded-lg text-sm lg:text-base ${
+                      message.type === 'user' 
+                        ? 'bg-[#00FFB2] text-black' 
+                        : 'bg-[#1A1A1A] text-white'
+                    }`}>
+                      <div className="flex items-center space-x-1 lg:space-x-2 mb-1">
+                        {message.type === 'user' ? (
+                          <User size={12} lg:size={16} />
+                        ) : (
+                          <Bot size={12} lg:size={16} className="text-[#00FFB2]" />
+                        )}
+                        <span className="text-xs opacity-70">
+                          {message.timestamp.toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <div className="whitespace-pre-wrap text-xs lg:text-sm">{message.content}</div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+              
+              {/* Message Input */}
+              <div className="p-2 lg:p-4 border-t border-[#00FFB2]/20">
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    placeholder="Type your response..."
+                    className="flex-1 bg-[#1A1A1A] border border-gray-600 rounded-lg px-3 lg:px-4 py-2 text-white text-sm lg:text-base focus:outline-none focus:ring-2 focus:ring-[#00FFB2]"
+                    disabled={!interviewStarted || isAISpeaking}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={!interviewStarted || isAISpeaking || !userInput.trim()}
+                    className="btn-primary px-3 lg:px-4 py-2 disabled:opacity-50"
+                  >
+                    <Send size={14} lg:size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Code Editor (Desktop) or Info Panel */}
+          {hasCodeEditor ? (
+            <div className="hidden lg:flex lg:w-1/2 flex-col">
+              <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <Code size={20} className="text-[#00FFB2]" />
+                    <span className="font-semibold">Code Editor</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="bg-[#1A1A1A] border border-gray-600 rounded px-3 py-1 text-sm"
+                    >
+                      {getLanguageOptions().map(lang => (
+                        <option key={lang} value={lang}>
+                          {lang.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={runCode}
+                      className="btn-primary px-4 py-1 text-sm flex items-center space-x-1"
+                    >
+                      <Terminal size={14} />
+                      <span>Run</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex-1">
+                <CodeEditor
+                  value={code}
+                  onChange={setCode}
+                  language={language}
+                  theme="dark"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-[#0A0A0A]">
+              <div className="text-center">
+                <FileText size={48} className="text-gray-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Interview Notes</h3>
+                <p className="text-gray-400">
+                  This interview focuses on behavioral and conceptual questions.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Start Interview Overlay */}
         {!interviewStarted && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="glass-card p-6 lg:p-8 text-center max-w-sm lg:max-w-md mx-4">
-              <Bot size={48} className="lg:w-16 lg:h-16 text-[#00FFB2] mx-auto mb-4" />
-              <h2 className="text-xl lg:text-2xl font-bold mb-4">Voice Interview Ready</h2>
-              <p className="text-gray-400 text-sm lg:text-base mb-6">
-                Your {category} voice interview at {level} level is about to
-                begin. Duration: {duration} minutes.
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="glass-card p-6 lg:p-8 text-center max-w-md">
+              <h2 className="text-xl lg:text-2xl font-bold mb-4">Ready to Start?</h2>
+              <p className="text-gray-400 mb-6 text-sm lg:text-base">
+                Your {category} interview at {level} level is about to begin. 
+                Duration: {duration} minutes.
               </p>
-
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 lg:p-4 mb-6">
-                <p className="text-blue-400 text-xs lg:text-sm">
-                  <strong>Voice Interview:</strong> The AI will ask questions
-                  with voice. Click the microphone button to respond with your
-                  voice.
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 lg:p-4 mb-6">
+                <p className="text-yellow-400 text-xs lg:text-sm">
+                  <strong>Important:</strong> This interview will be in fullscreen mode. 
+                  Tab switching is monitored and limited to 3 attempts.
                 </p>
               </div>
-
               <button
                 onClick={startInterview}
-                className="btn-primary px-6 lg:px-8 py-2.5 lg:py-3 text-base lg:text-lg flex items-center justify-center mx-auto w-full lg:w-auto"
+                className="btn-primary px-6 lg:px-8 py-2.5 lg:py-3 text-base lg:text-lg flex items-center justify-center mx-auto"
               >
                 <Play className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
-                Start Voice Interview
+                Start Interview
               </button>
             </div>
           </div>
@@ -1317,19 +875,10 @@ function VoiceInterviewContent() {
   );
 }
 
-export default function VoiceInterviewPage() {
+export default function InterviewSessionPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-black flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00FFB2] mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading interview session...</p>
-          </div>
-        </div>
-      }
-    >
-      <VoiceInterviewContent />
+    <Suspense fallback={<div>Loading...</div>}>
+      <InterviewSessionContent />
     </Suspense>
   );
 }
