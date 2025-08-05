@@ -93,49 +93,15 @@ function VoiceInterviewContent() {
   const buildInterviewPayload = () => {
     return {
       user: {
-        id: user?._id || "688a49e1421a4269f543b115",
+        id: user?._id || "user123",
         name: user?.name || "John Doe",
-        email: user?.email || "john@example.com",
-        role: user?.role || "Software Engineer",
-        experience: user?.experience || "3 years",
-        skills: user?.tech_stack
-          ? user.tech_stack.split(",")
-          : ["JavaScript", "React", "Node.js", "Python", "SQL"],
-        goals: user?.goals || "Improve coding skills",
-        education: user?.education
-          ? JSON.parse(user.education)
-          : [
-              {
-                degree: "Bachelor of Computer Science",
-                institution: "Tech University",
-                year: 2020
-              },
-            ],
-        workExperience: [
-          {
-            title: "Frontend Developer",
-            company: "Tech Corp",
-            duration: "2 years",
-            description:
-              "Developed web applications",
-          },
-        ],
-        profileCompletion: user?.profile_completion || 85,
+        email: user?.email || "john@example.com"
       },
       configuration: {
         level: level === 'entry' ? 'beginner' : level === 'mid' ? 'intermediate' : level === 'senior' ? 'advanced' : 'intermediate',
         category: category,
-        duration: parseInt(duration),
-        hasCodeEditor: hasCodeEditor,
-        language: language,
-        isFreeInterview: true,
-      },
-      context: {
-        sessionId: `session_${Date.now()}_${user?._id}`,
-        startTime: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        isFreeInterview: true,
+        duration: parseInt(duration) * 60,
+        language: language
       },
     };
   };
@@ -387,8 +353,11 @@ function VoiceInterviewContent() {
       const conversationPayload = {
         sessionId: sessionId,
         message: answer,
-        questionId: currentQuestionId || `q_${Date.now()}`,
-        responseTime: Math.floor(Math.random() * 20) + 5
+        responseTime: Math.floor(Math.random() * 20) + 5,
+        metadata: {
+          userAgent: navigator.userAgent,
+          deviceType: "desktop"
+        }
       };
 
       console.log("📤 Sending conversation payload:", conversationPayload);
@@ -408,7 +377,7 @@ function VoiceInterviewContent() {
 
         if (data.success) {
           const aiMessage: Message = {
-            id: `ai_${Date.now()}`,
+            id: data.messageId || `ai_${Date.now()}`,
             type: "ai",
             content: data.aiResponse || "Thank you for your response. Let me continue with the next question.",
             timestamp: new Date(),
@@ -427,12 +396,12 @@ function VoiceInterviewContent() {
 
           // Update current question if provided
           if (data.currentQuestion) {
-            setCurrentQuestionNumber(data.currentQuestion.questionNumber);
-            setCurrentQuestionId(data.currentQuestion.id);
+            setCurrentQuestionNumber(data.currentQuestion.questionNumber || currentQuestionNumber + 1);
+            setCurrentQuestionId(data.currentQuestion.id || `q_${Date.now()}`);
             
             // Add the new question as a message
             const questionMessage: Message = {
-              id: `question_${Date.now()}`,
+              id: data.currentQuestion.id || `question_${Date.now()}`,
               type: "ai",
               content: data.currentQuestion.question,
               timestamp: new Date(),
@@ -450,7 +419,7 @@ function VoiceInterviewContent() {
             const result = data.codeExecutionResult;
             const codeResultMessage: Message = {
               id: `code_result_${Date.now()}`,
-              type: "ai",
+              type: "system",
               content: `**Code Execution Results:**\n- Status: ${result.success ? '✅ Success' : '❌ Failed'}\n- Output: ${result.output}\n- Execution Time: ${result.executionTime}ms\n- Memory Usage: ${result.memory}\n\n**Feedback:**\n- Score: ${result.feedback?.score || 0}/100\n- Assessment: ${result.feedback?.isCorrect ? 'Correct ✅' : 'Needs Improvement ❌'}\n- Message: ${result.feedback?.message || 'No feedback available'}\n${result.feedback?.suggestions ? '\n- Suggestions: ' + result.feedback.suggestions.join(', ') : ''}`,
               timestamp: new Date(),
             };
@@ -481,7 +450,7 @@ function VoiceInterviewContent() {
     try {
       const codePayload = {
         sessionId: sessionId,
-        message: `Here's my solution to the coding question`,
+        message: "Here's my solution to the coding question",
         questionId: questionId,
         codeContext: {
           questionId: questionId,
@@ -489,7 +458,7 @@ function VoiceInterviewContent() {
           language: language,
           isCodeSubmission: true
         },
-        responseTime: Math.floor(Math.random() * 180) + 120 // 2-5 minutes for coding
+        responseTime: Math.floor(Math.random() * 180) + 120
       };
 
       console.log("💻 Sending code submission:", codePayload);
@@ -511,7 +480,7 @@ function VoiceInterviewContent() {
           // Add AI response message
           if (data.aiResponse) {
             const aiMessage: Message = {
-              id: `ai_code_${Date.now()}`,
+              id: data.messageId || `ai_code_${Date.now()}`,
               type: "ai",
               content: data.aiResponse,
               timestamp: new Date(),
@@ -544,13 +513,13 @@ function VoiceInterviewContent() {
 
           // Handle next question
           if (data.currentQuestion) {
-            setCurrentQuestionNumber(data.currentQuestion.questionNumber);
-            setCurrentQuestionId(data.currentQuestion.id);
+            setCurrentQuestionNumber(data.currentQuestion.questionNumber || currentQuestionNumber + 1);
+            setCurrentQuestionId(data.currentQuestion.id || `q_${Date.now()}`);
             
             // Add the new question as a message after a delay
             setTimeout(() => {
               const questionMessage: Message = {
-                id: `question_${Date.now()}`,
+                id: data.currentQuestion.id || `question_${Date.now()}`,
                 type: "ai",
                 content: data.currentQuestion.question,
                 timestamp: new Date(),
@@ -604,7 +573,7 @@ function VoiceInterviewContent() {
             id: `history_${index}`,
             type: conv.sender === 'user' ? 'user' : 'ai',
             content: conv.message,
-            timestamp: new Date(conv.timestamp),
+            timestamp: new Date(conv.timestamp)
           }));
 
           setMessages(prev => [...prev, ...historyMessages]);
@@ -628,14 +597,7 @@ function VoiceInterviewContent() {
     try {
       const endPayload = {
         sessionId: sessionId,
-        results: {
-          status: "completed",
-          endTime: new Date().toISOString(),
-          totalTimeSpent: parseInt(duration) * 60 - timeRemaining,
-          questionsAnswered: questionsAnswered,
-          totalQuestions: totalQuestions,
-          completionPercentage: Math.round((questionsAnswered / totalQuestions) * 100)
-        }
+        feedback: "Great interview experience!"
       };
 
       console.log("📤 Sending end interview payload:", endPayload);
@@ -657,8 +619,8 @@ function VoiceInterviewContent() {
         if (typeof window !== 'undefined') {
           localStorage.setItem('lastInterviewResults', JSON.stringify({
             sessionId: sessionId,
-            results: result.results,
-            endTime: result.endTime
+            endTime: result.endTime,
+            message: result.message
           }));
         }
       } else {
@@ -715,9 +677,9 @@ function VoiceInterviewContent() {
         // Updated to match your backend response structure
         if (data.success && data.sessionId) {
           setSessionId(data.sessionId);
-          setTotalQuestions(data.firstQuestion?.totalQuestions || 6);
-          setCurrentQuestionNumber(data.firstQuestion?.questionNumber || 1);
-          setCurrentQuestionId(data.firstQuestion?.id || "intro1");
+          setTotalQuestions(6);
+          setCurrentQuestionNumber(1);
+          setCurrentQuestionId("intro1");
 
           // Add AI welcome message
           const welcomeMessage: Message = {
@@ -731,7 +693,7 @@ function VoiceInterviewContent() {
           // Add first question
           if (data.firstQuestion) {
             const questionMessage: Message = {
-              id: data.firstQuestion.id,
+              id: data.firstQuestion.id || "intro1",
               type: "ai",
               content: data.firstQuestion.question,
               timestamp: new Date(),
@@ -742,9 +704,9 @@ function VoiceInterviewContent() {
             playAIAudio("", data.firstQuestion.question);
             
             // Set current question details
-            setCurrentQuestionId(data.firstQuestion.id);
-            setCurrentQuestionNumber(data.firstQuestion.questionNumber);
-            setTotalQuestions(data.firstQuestion.totalQuestions);
+            setCurrentQuestionId(data.firstQuestion.id || "intro1");
+            setCurrentQuestionNumber(data.firstQuestion.questionNumber || 1);
+            setTotalQuestions(data.firstQuestion.totalQuestions || 6);
           }
         } else {
           throw new Error(data.message || "Failed to initialize interview");
