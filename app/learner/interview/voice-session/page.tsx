@@ -95,14 +95,43 @@ function VoiceInterviewContent() {
       user: {
         id: user?._id || "user123",
         name: user?.name || "John Doe",
-        email: user?.email || "john@example.com"
+        email: user?.email || "john@example.com",
+        role: user?.role || "user",
+        experience: user?.experience || "3 years in software development",
+        skills: user?.tech_stack ? user.tech_stack.split(',').map(s => s.trim()) : ["JavaScript", "React", "Node.js"],
+        goals: user?.goals || "Improve technical interview skills",
+        education: user?.education ? (Array.isArray(user.education) ? user.education : []) : [
+          {
+            degree: "Bachelor of Computer Science",
+            institution: "University",
+            year: 2020
+          }
+        ],
+        workExperience: user?.work_experience ? (Array.isArray(user.work_experience) ? user.work_experience : []) : [
+          {
+            title: "Software Developer",
+            company: "Tech Company",
+            duration: "2 years",
+            description: "Full-stack development"
+          }
+        ],
+        profileCompletion: user?.profile_completion || 75
       },
       configuration: {
         level: level === 'entry' ? 'beginner' : level === 'mid' ? 'intermediate' : level === 'senior' ? 'advanced' : 'intermediate',
         category: category,
         duration: parseInt(duration) * 60,
-        language: language
+        language: language,
+        hasCodeEditor: hasCodeEditor,
+        isFreeInterview: true
       },
+      context: {
+        sessionId: `session_${Date.now()}_${user?._id || 'user123'}`,
+        startTime: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        isFreeInterview: true
+      }
     };
   };
 
