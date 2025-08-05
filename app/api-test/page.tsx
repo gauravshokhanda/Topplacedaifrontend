@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
-const API_URL = "https://ebc3b0c55b1a.ngrok-free.app";
+const API_URL = "https://fd274948c2db.ngrok-free.app";
 
 export default function APITestClient() {
   const [sessionId, setSessionId] = useState<string>("");
