@@ -890,39 +890,39 @@ function VoiceInterviewContent() {
 
       <div className="pt-16">
         {/* Header Bar */}
-        <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
+        <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 px-3 lg:px-6 py-3 lg:py-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-0">
+            <div className="flex flex-wrap items-center gap-2 lg:gap-6">
               <div className="flex items-center space-x-2">
-                <Clock size={20} className="text-[#00FFB2]" />
-                <span className="font-mono text-lg">
+                <Clock size={16} className="lg:w-5 lg:h-5 text-[#00FFB2]" />
+                <span className="font-mono text-base lg:text-lg">
                   {formatTime(timeRemaining)}
                 </span>
               </div>
-              <div className="text-sm text-gray-400">
+              <div className="text-xs lg:text-sm text-gray-400">
                 Voice Interview • {category?.toUpperCase()} •{" "}
                 {level?.toUpperCase()}
               </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-400">Progress:</span>
-                <div className="w-32 bg-[#1A1A1A] rounded-full h-2">
+              <div className="flex items-center space-x-2 flex-1 lg:flex-initial">
+                <span className="text-xs lg:text-sm text-gray-400">Progress:</span>
+                <div className="w-20 lg:w-32 bg-[#1A1A1A] rounded-full h-2">
                   <div
                     className="bg-gradient-to-r from-[#00FFB2] to-[#00CC8E] h-2 rounded-full transition-all duration-300"
                     style={{ width: `${interviewProgress}%` }}
                   />
                 </div>
-                <span className="text-sm text-[#00FFB2]">
+                <span className="text-xs lg:text-sm text-[#00FFB2]">
                   {questionsAnswered}/{totalQuestions}
                 </span>
               </div>
               {sessionId && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 hidden lg:block">
                   Session: {sessionId.slice(-8)}
                 </div>
               )}
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center justify-center lg:justify-end space-x-2 lg:space-x-4">
               <button
                 onClick={toggleMic}
                 className={`p-2 rounded-full ${
@@ -931,7 +931,7 @@ function VoiceInterviewContent() {
                     : "bg-red-500/20 text-red-400"
                 }`}
               >
-                {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
+                {isMicOn ? <Mic size={16} className="lg:w-5 lg:h-5" /> : <MicOff size={16} className="lg:w-5 lg:h-5" />}
               </button>
 
               <button
@@ -942,7 +942,7 @@ function VoiceInterviewContent() {
                     : "bg-red-500/20 text-red-400"
                 }`}
               >
-                {isCameraOn ? <Video size={20} /> : <VideoOff size={20} />}
+                {isCameraOn ? <Video size={16} className="lg:w-5 lg:h-5" /> : <VideoOff size={16} className="lg:w-5 lg:h-5" />}
               </button>
 
               <button
@@ -950,7 +950,7 @@ function VoiceInterviewContent() {
                 className="p-2 rounded-full bg-[#00FFB2]/20 text-[#00FFB2] hover:bg-[#00FFB2]/30"
                 title="Download Transcript"
               >
-                <Download size={20} />
+                <Download size={16} className="lg:w-5 lg:h-5" />
               </button>
 
               {hasCodeEditor && (
@@ -962,18 +962,18 @@ function VoiceInterviewContent() {
                   }
                 >
                   {showCodeEditor ? (
-                    <Minimize2 size={20} />
+                    <Minimize2 size={16} className="lg:w-5 lg:h-5" />
                   ) : (
-                    <Code size={20} />
+                    <Code size={16} className="lg:w-5 lg:h-5" />
                   )}
                 </button>
               )}
 
               <button
                 onClick={handleEndInterview}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+                className="bg-red-500 hover:bg-red-600 text-white px-3 lg:px-4 py-2 rounded-lg flex items-center space-x-1 lg:space-x-2 text-sm lg:text-base"
               >
-                <Phone size={16} />
+                <Phone size={14} className="lg:w-4 lg:h-4" />
                 <span>End Interview</span>
               </button>
             </div>
@@ -982,10 +982,10 @@ function VoiceInterviewContent() {
 
         <div className="flex h-[calc(100vh-120px)]">
           {/* Left Panel - Video and Chat */}
-          <div className="w-1/2 flex flex-col border-r border-[#00FFB2]/20">
+          <div className="w-full lg:w-1/2 flex flex-col lg:border-r border-[#00FFB2]/20">
             {/* Video Section */}
-            <div className="h-1/2 bg-[#0A0A0A] p-4">
-              <div className="grid grid-cols-2 gap-4 h-full">
+            <div className="h-48 lg:h-1/2 bg-[#0A0A0A] p-2 lg:p-4">
+              <div className="grid grid-cols-2 gap-2 lg:gap-4 h-full">
                 {/* User Video */}
                 <div className="bg-[#111] rounded-lg overflow-hidden relative">
                   <video
@@ -995,11 +995,11 @@ function VoiceInterviewContent() {
                     muted
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
+                  <div className="absolute bottom-1 lg:bottom-2 left-1 lg:left-2 bg-black/50 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm">
                     You
                   </div>
                   {isListening && (
-                    <div className="absolute top-2 right-2 bg-red-500 px-2 py-1 rounded text-xs animate-pulse">
+                    <div className="absolute top-1 lg:top-2 right-1 lg:right-2 bg-red-500 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs animate-pulse">
                       🎤 Recording...
                     </div>
                   )}
@@ -1008,11 +1008,11 @@ function VoiceInterviewContent() {
                 {/* AI Avatar */}
                 <div className="bg-[#111] rounded-lg overflow-hidden relative">
                   <AIAvatar isActive={isAISpeaking} />
-                  <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded text-sm">
+                  <div className="absolute bottom-1 lg:bottom-2 left-1 lg:left-2 bg-black/50 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm">
                     AI Interviewer
                   </div>
                   {isAudioPlaying && (
-                    <div className="absolute top-2 right-2 bg-[#00FFB2] px-2 py-1 rounded text-xs text-black">
+                    <div className="absolute top-1 lg:top-2 right-1 lg:right-2 bg-[#00FFB2] px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs text-black">
                       🔊 Speaking...
                     </div>
                   )}
@@ -1021,8 +1021,8 @@ function VoiceInterviewContent() {
             </div>
 
             {/* Chat Section */}
-            <div className="h-1/2 flex flex-col bg-[#0A0A0A]">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 lg:h-1/2 flex flex-col bg-[#0A0A0A]">
+              <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-2 lg:space-y-4 max-h-64 lg:max-h-none">
                 {messages.map((message) => (
                   <div
                     key={message.id}
@@ -1036,6 +1036,7 @@ function VoiceInterviewContent() {
                   >
                     <div
                       className={`max-w-[80%] p-3 rounded-lg ${
+                      className={`max-w-[90%] lg:max-w-[80%] p-2 lg:p-3 rounded-lg ${
                         message.type === "user"
                           ? "bg-[#00FFB2] text-black"
                           : message.type === "system"
@@ -1044,13 +1045,13 @@ function VoiceInterviewContent() {
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1 lg:space-x-2">
                           {message.type === "user" ? (
-                            <User size={16} />
+                            <User size={14} className="lg:w-4 lg:h-4" />
                           ) : message.type === "system" ? (
-                            <Bot size={16} className="text-yellow-400" />
+                            <Bot size={14} className="lg:w-4 lg:h-4 text-yellow-400" />
                           ) : (
-                            <Bot size={16} className="text-[#00FFB2]" />
+                            <Bot size={14} className="lg:w-4 lg:h-4 text-[#00FFB2]" />
                           )}
                           <span className="text-xs opacity-70">
                             {message.timestamp.toLocaleTimeString()}
@@ -1062,11 +1063,11 @@ function VoiceInterviewContent() {
                             className="text-[#00FFB2] hover:text-[#00CC8E] ml-2"
                             title="Replay Audio"
                           >
-                            <Volume2 size={14} />
+                            <Volume2 size={12} className="lg:w-3.5 lg:h-3.5" />
                           </button>
                         )}
                       </div>
-                      <div className="whitespace-pre-wrap">
+                      <div className="whitespace-pre-wrap text-xs lg:text-sm">
                         {message.content}
                       </div>
                     </div>
@@ -1076,36 +1077,36 @@ function VoiceInterviewContent() {
               </div>
 
               {/* Voice Input Section */}
-              <div className="p-4 border-t border-[#00FFB2]/20">
-                <div className="flex flex-col space-y-3">
+              <div className="p-3 lg:p-4 border-t border-[#00FFB2]/20">
+                <div className="flex flex-col space-y-2 lg:space-y-3">
                   {transcript && (
-                    <div className="bg-[#1A1A1A] p-3 rounded-lg border border-[#00FFB2]/20">
-                      <div className="text-sm text-gray-400 mb-1">
+                    <div className="bg-[#1A1A1A] p-2 lg:p-3 rounded-lg border border-[#00FFB2]/20">
+                      <div className="text-xs lg:text-sm text-gray-400 mb-1">
                         Transcript:
                       </div>
-                      <div className="text-white">{transcript}</div>
+                      <div className="text-white text-sm lg:text-base">{transcript}</div>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-center space-x-4">
+                  <div className="flex flex-col lg:flex-row items-center justify-center space-y-2 lg:space-y-0 lg:space-x-4">
                     <button
                       onClick={isListening ? stopListening : startListening}
                       disabled={!interviewStarted || isAISpeaking}
-                      className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      className={`w-12 h-12 lg:w-16 lg:h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
                         isListening
                           ? "bg-red-500 hover:bg-red-600 animate-pulse"
                           : "bg-[#00FFB2] hover:bg-[#00CC8E]"
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {isListening ? (
-                        <Square size={24} className="text-white" />
+                        <Square size={16} className="lg:w-6 lg:h-6 text-white" />
                       ) : (
-                        <Mic size={24} className="text-black" />
+                        <Mic size={16} className="lg:w-6 lg:h-6 text-black" />
                       )}
                     </button>
 
                     <div className="text-center">
-                      <div className="text-sm text-gray-400">
+                      <div className="text-xs lg:text-sm text-gray-400">
                         {!interviewStarted
                           ? "Start interview to begin"
                           : isAISpeaking
@@ -1128,25 +1129,25 @@ function VoiceInterviewContent() {
 
           {/* Right Panel - Code Editor (if applicable) */}
           {hasCodeEditor && showCodeEditor ? (
-            <div className="w-1/2 flex flex-col">
-              <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 p-4">
+            <div className="hidden lg:flex lg:w-1/2 flex-col">
+              <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 p-3 lg:p-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <Code size={20} className="text-[#00FFB2]" />
-                    <span className="font-semibold">Code Editor</span>
+                  <div className="flex items-center space-x-2 lg:space-x-4">
+                    <Code size={18} className="lg:w-5 lg:h-5 text-[#00FFB2]" />
+                    <span className="font-semibold text-sm lg:text-base">Code Editor</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => setShowCodeEditor(false)}
-                      className="p-1 rounded bg-[#1A1A1A] hover:bg-[#333] text-gray-400 hover:text-white"
+                      className="p-1 rounded bg-[#1A1A1A] hover:bg-[#333] text-gray-400 hover:text-white lg:block hidden"
                       title="Close Code Editor"
                     >
-                      <Minimize2 size={16} />
+                      <Minimize2 size={14} />
                     </button>
                     <select
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
-                      className="bg-[#1A1A1A] border border-gray-600 rounded px-3 py-1 text-sm"
+                      className="bg-[#1A1A1A] border border-gray-600 rounded px-2 lg:px-3 py-1 text-xs lg:text-sm"
                     >
                       {getLanguageOptions().map((lang) => (
                         <option key={lang} value={lang}>
@@ -1156,9 +1157,9 @@ function VoiceInterviewContent() {
                     </select>
                     <button
                       onClick={runCode}
-                      className="btn-primary px-4 py-1 text-sm flex items-center space-x-1"
+                      className="btn-primary px-3 lg:px-4 py-1 text-xs lg:text-sm flex items-center space-x-1"
                     >
-                      <Terminal size={14} />
+                      <Terminal size={12} className="lg:w-3.5 lg:h-3.5" />
                       <span>Run</span>
                     </button>
                   </div>
@@ -1175,19 +1176,19 @@ function VoiceInterviewContent() {
               </div>
             </div>
           ) : hasCodeEditor && !showCodeEditor ? (
-            <div className="w-1/2 flex items-center justify-center bg-[#0A0A0A] border-l border-[#00FFB2]/20">
+            <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-[#0A0A0A] border-l border-[#00FFB2]/20">
               <div className="text-center">
-                <Code size={48} className="text-gray-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">
+                <Code size={40} className="lg:w-12 lg:h-12 text-gray-500 mx-auto mb-4" />
+                <h3 className="text-lg lg:text-xl font-semibold mb-2">
                   Code Editor Available
                 </h3>
-                <p className="text-gray-400 mb-4">
+                <p className="text-gray-400 text-sm lg:text-base mb-4">
                   Click the code editor button in the header to open the coding
                   environment.
                 </p>
-                <div className="bg-[#1A1A1A] p-4 rounded-lg mb-4">
-                  <h4 className="font-semibold mb-2 text-[#00FFB2]">Coding Instructions:</h4>
-                  <ul className="text-sm text-gray-400 space-y-1">
+                <div className="bg-[#1A1A1A] p-3 lg:p-4 rounded-lg mb-4">
+                  <h4 className="font-semibold mb-2 text-[#00FFB2] text-sm lg:text-base">Coding Instructions:</h4>
+                  <ul className="text-xs lg:text-sm text-gray-400 space-y-1">
                     <li>• Write your solution in the code editor</li>
                     <li>• Click "Submit Code" to execute and get feedback</li>
                     <li>• AI will provide detailed feedback and scoring</li>
@@ -1196,25 +1197,25 @@ function VoiceInterviewContent() {
                 </div>
                 <button
                   onClick={() => setShowCodeEditor(true)}
-                  className="btn-primary flex items-center mx-auto"
+                  className="btn-primary flex items-center mx-auto text-sm lg:text-base px-4 lg:px-6 py-2"
                 >
-                  <Code size={16} className="mr-2" />
+                  <Code size={14} className="lg:w-4 lg:h-4 mr-2" />
                   Open Code Editor
                 </button>
               </div>
             </div>
           ) : !hasCodeEditor ? (
-            <div className="w-1/2 flex items-center justify-center bg-[#0A0A0A]">
+            <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-[#0A0A0A]">
               <div className="text-center">
-                <Bot size={48} className="text-gray-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Voice Interview</h3>
-                <p className="text-gray-400 mb-4">
+                <Bot size={40} className="lg:w-12 lg:h-12 text-gray-500 mx-auto mb-4" />
+                <h3 className="text-lg lg:text-xl font-semibold mb-2">Voice Interview</h3>
+                <p className="text-gray-400 text-sm lg:text-base mb-4">
                   This interview focuses on verbal communication and behavioral
                   questions.
                 </p>
-                <div className="bg-[#1A1A1A] p-4 rounded-lg">
-                  <h4 className="font-semibold mb-2">Interview Tips:</h4>
-                  <ul className="text-sm text-gray-400 space-y-1">
+                <div className="bg-[#1A1A1A] p-3 lg:p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2 text-sm lg:text-base">Interview Tips:</h4>
+                  <ul className="text-xs lg:text-sm text-gray-400 space-y-1">
                     <li>• Speak clearly and at a moderate pace</li>
                     <li>• Provide specific examples when possible</li>
                     <li>• Take a moment to think before answering</li>
@@ -1226,19 +1227,76 @@ function VoiceInterviewContent() {
           ) : null}
         </div>
 
+        {/* Mobile Code Editor Overlay */}
+        {hasCodeEditor && showCodeEditor && (
+          <div className="lg:hidden fixed inset-0 bg-black z-50 flex flex-col">
+            <div className="bg-[#0A0A0A] border-b border-[#00FFB2]/20 p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Code size={20} className="text-[#00FFB2]" />
+                <span className="font-semibold">Code Editor</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="bg-[#1A1A1A] border border-gray-600 rounded px-2 py-1 text-sm"
+                >
+                  {getLanguageOptions().map((lang) => (
+                    <option key={lang} value={lang}>
+                      {lang.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={runCode}
+                  className="btn-primary px-3 py-1 text-sm flex items-center space-x-1"
+                >
+                  <Terminal size={14} />
+                  <span>Run</span>
+                </button>
+                <button
+                  onClick={() => setShowCodeEditor(false)}
+                  className="p-2 rounded bg-[#1A1A1A] hover:bg-[#333] text-gray-400 hover:text-white"
+                >
+                  <Minimize2 size={16} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex-1">
+              <CodeEditor
+                value={code}
+                onChange={setCode}
+                language={language}
+                theme="dark"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Code Editor Toggle Button */}
+        {hasCodeEditor && !showCodeEditor && (
+          <button
+            onClick={() => setShowCodeEditor(true)}
+            className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#00FFB2] rounded-full flex items-center justify-center shadow-lg z-40"
+          >
+            <Code size={24} className="text-black" />
+          </button>
+        )}
+
         {/* Start Interview Overlay */}
         {!interviewStarted && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="glass-card p-8 text-center max-w-md">
-              <Bot size={64} className="text-[#00FFB2] mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-4">Voice Interview Ready</h2>
-              <p className="text-gray-400 mb-6">
+            <div className="glass-card p-6 lg:p-8 text-center max-w-sm lg:max-w-md mx-4">
+              <Bot size={48} className="lg:w-16 lg:h-16 text-[#00FFB2] mx-auto mb-4" />
+              <h2 className="text-xl lg:text-2xl font-bold mb-4">Voice Interview Ready</h2>
+              <p className="text-gray-400 text-sm lg:text-base mb-6">
                 Your {category} voice interview at {level} level is about to
                 begin. Duration: {duration} minutes.
               </p>
 
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-                <p className="text-blue-400 text-sm">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 lg:p-4 mb-6">
+                <p className="text-blue-400 text-xs lg:text-sm">
                   <strong>Voice Interview:</strong> The AI will ask questions
                   with voice. Click the microphone button to respond with your
                   voice.
@@ -1247,9 +1305,9 @@ function VoiceInterviewContent() {
 
               <button
                 onClick={startInterview}
-                className="btn-primary px-8 py-3 text-lg flex items-center justify-center mx-auto"
+                className="btn-primary px-6 lg:px-8 py-2.5 lg:py-3 text-base lg:text-lg flex items-center justify-center mx-auto w-full lg:w-auto"
               >
-                <Play className="h-5 w-5 mr-2" />
+                <Play className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
                 Start Voice Interview
               </button>
             </div>

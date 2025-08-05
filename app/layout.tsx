@@ -2,6 +2,7 @@ import "./globals.css";
 import { ReduxProvider } from "@/store/provider";
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
+import LoadingBar from "@/components/LoadingBar";
 
 export const metadata: Metadata = {
   title: "Top placed AI | AI-Powered Career Development Platform",
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="bg-black text-white antialiased">
         <div className="min-h-screen">
+          <LoadingBar />
           <Toaster richColors position="top-center" />
           <ReduxProvider>{children}</ReduxProvider>
         </div>

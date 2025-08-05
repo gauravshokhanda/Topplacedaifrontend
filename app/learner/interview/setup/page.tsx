@@ -202,21 +202,23 @@ export default function InterviewSetupPage() {
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
-      <Sidebar userType="learner" />
+      <div className="lg:block hidden">
+        <Sidebar userType="learner" />
+      </div>
 
-      <div className="ml-64 pt-20 pb-12">
-        <div className="container-custom space-y-10">
+      <div className="lg:ml-64 ml-0 pt-20 pb-12 px-4 lg:px-0">
+        <div className="container-custom space-y-6 lg:space-y-10">
           {/* Header */}
           <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2">
               Setup Your <span className="gradient-text">AI Interview</span>
             </h1>
-            <p className="text-gray-400 text-lg">
+            <p className="text-gray-400 text-base lg:text-lg px-4">
               Choose your interview preferences and let our AI conduct a personalized session
             </p>
             
             {/* Free Trial Status */}
-            <div className="mt-6 max-w-md mx-auto">
+            <div className="mt-4 lg:mt-6 max-w-md mx-auto px-4">
               {!hasPaidPlan && (
                 <div className={`p-4 rounded-lg border ${
                   freeInterviewsUsed >= 2 
@@ -243,23 +245,23 @@ export default function InterviewSetupPage() {
           </div>
 
           {/* Interview Level Selection */}
-          <div className="glass-card p-8">
-            <h2 className="text-2xl font-semibold mb-6">Select Interview Level</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="glass-card p-4 lg:p-8">
+            <h2 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6">Select Interview Level</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
               {interviewLevels.map((level) => (
                 <button
                   key={level.id}
                   onClick={() => setSelectedLevel(level.id)}
                   disabled={!canStartFreeInterview}
-                  className={`p-6 rounded-lg border-2 transition-all text-left ${
+                  className={`p-4 lg:p-6 rounded-lg border-2 transition-all text-left ${
                     selectedLevel === level.id
                       ? 'border-[#00FFB2] bg-[#00FFB2]/10'
                       : 'border-[#333] hover:border-[#00FFB2]/50'
                   } ${!canStartFreeInterview ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <div className="text-3xl mb-3">{level.icon}</div>
-                  <h3 className="font-semibold mb-2">{level.name}</h3>
-                  <p className="text-sm text-gray-400 mb-3">{level.description}</p>
+                  <div className="text-2xl lg:text-3xl mb-2 lg:mb-3">{level.icon}</div>
+                  <h3 className="font-semibold text-sm lg:text-base mb-1 lg:mb-2">{level.name}</h3>
+                  <p className="text-xs lg:text-sm text-gray-400 mb-2 lg:mb-3">{level.description}</p>
                   <span className={`text-xs px-2 py-1 rounded-full ${
                     level.difficulty === 'Easy' ? 'bg-green-500/20 text-green-400' :
                     level.difficulty === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -274,9 +276,9 @@ export default function InterviewSetupPage() {
           </div>
 
           {/* Interview Category Selection */}
-          <div className="glass-card p-8">
-            <h2 className="text-2xl font-semibold mb-6">Select Interview Category</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="glass-card p-4 lg:p-8">
+            <h2 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6">Select Interview Category</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
               {interviewCategories.map((category) => {
                 const IconComponent = category.icon;
                 return (
@@ -284,24 +286,24 @@ export default function InterviewSetupPage() {
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
                     disabled={!canStartFreeInterview}
-                    className={`p-6 rounded-lg border-2 transition-all text-left ${
+                    className={`p-4 lg:p-6 rounded-lg border-2 transition-all text-left ${
                       selectedCategory === category.id
                         ? 'border-[#00FFB2] bg-[#00FFB2]/10'
                         : 'border-[#333] hover:border-[#00FFB2]/50'
                     } ${!canStartFreeInterview ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <div className="flex items-center mb-4">
-                      <IconComponent size={24} className={`${category.color} mr-3`} />
+                    <div className="flex items-center mb-3 lg:mb-4">
+                      <IconComponent size={20} className={`lg:w-6 lg:h-6 ${category.color} mr-2 lg:mr-3`} />
                       <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold">{category.name}</h3>
+                        <h3 className="font-semibold text-sm lg:text-base">{category.name}</h3>
                         {category.hasCodeEditor && (
-                          <span className="text-xs bg-[#00FFB2]/20 text-[#00FFB2] px-2 py-1 rounded-full">
+                          <span className="text-xs bg-[#00FFB2]/20 text-[#00FFB2] px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-full">
                             Code Editor
                           </span>
                         )}
                       </div>
                     </div>
-                    <p className="text-sm text-gray-400">{category.description}</p>
+                    <p className="text-xs lg:text-sm text-gray-400">{category.description}</p>
                   </button>
                 );
               })}
@@ -309,28 +311,28 @@ export default function InterviewSetupPage() {
           </div>
 
           {/* Duration Selection */}
-          <div className="glass-card p-8">
-            <h2 className="text-2xl font-semibold mb-6">Interview Duration</h2>
-            <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-              <p className="text-yellow-400 text-sm">
+          <div className="glass-card p-4 lg:p-8">
+            <h2 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6">Interview Duration</h2>
+            <div className="mb-4 p-3 lg:p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <p className="text-yellow-400 text-xs lg:text-sm">
                 <strong>Note:</strong> Only 30-minute interviews are available for free users. 
                 Upgrade to access longer durations.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
               {durations.map((duration) => (
                 <button
                   key={duration.value}
                   onClick={() => setSelectedDuration(duration.value)}
                   disabled={!canStartFreeInterview || (!hasPaidPlan && duration.value !== '30')}
-                  className={`p-4 rounded-lg border-2 transition-all text-center ${
+                  className={`p-3 lg:p-4 rounded-lg border-2 transition-all text-center ${
                     selectedDuration === duration.value
                       ? 'border-[#00FFB2] bg-[#00FFB2]/10'
                       : 'border-[#333] hover:border-[#00FFB2]/50'
                   } ${(!canStartFreeInterview || (!hasPaidPlan && duration.value !== '30')) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <div className="text-xl font-bold mb-1">{duration.label}</div>
-                  <div className="text-sm text-gray-400">{duration.description}</div>
+                  <div className="text-lg lg:text-xl font-bold mb-1">{duration.label}</div>
+                  <div className="text-xs lg:text-sm text-gray-400">{duration.description}</div>
                   {!hasPaidPlan && duration.value !== '30' && (
                     <div className="text-xs text-yellow-400 mt-1">Pro Only</div>
                   )}
@@ -344,20 +346,20 @@ export default function InterviewSetupPage() {
             <button
               onClick={handleStartInterview}
               disabled={!selectedLevel || !selectedCategory || !canStartFreeInterview || loading}
-              className="btn-primary px-8 py-4 text-lg flex items-center justify-center mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary px-6 lg:px-8 py-3 lg:py-4 text-base lg:text-lg flex items-center justify-center mx-auto disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
             >
-              <Play className="h-5 w-5 mr-2" />
+              <Play className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
               {loading ? 'Starting...' : 
                !canStartFreeInterview ? 'Upgrade Required' : 
                'Start AI Interview'}
             </button>
             {(!selectedLevel || !selectedCategory) && canStartFreeInterview && (
-              <p className="text-red-400 text-sm mt-2">
+              <p className="text-red-400 text-xs lg:text-sm mt-2 px-4">
                 Please select both interview level and category to continue
               </p>
             )}
             {!canStartFreeInterview && (
-              <p className="text-red-400 text-sm mt-2">
+              <p className="text-red-400 text-xs lg:text-sm mt-2 px-4">
                 You have used your 2 free interviews. Please upgrade to continue.
               </p>
             )}
