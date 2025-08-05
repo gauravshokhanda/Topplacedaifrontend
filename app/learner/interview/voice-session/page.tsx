@@ -1035,7 +1035,6 @@ function VoiceInterviewContent() {
                     }`}
                   >
                     <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
                       className={`max-w-[90%] lg:max-w-[80%] p-2 lg:p-3 rounded-lg ${
                         message.type === "user"
                           ? "bg-[#00FFB2] text-black"
