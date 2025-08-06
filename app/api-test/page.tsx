@@ -185,7 +185,7 @@ printFibonacci(10);`
         role: "user",
       },
       configuration: {
-        level: "mid",
+        level: "intermediate",
         category: "fullstack",
         duration: 30,
         hasCodeEditor: true,

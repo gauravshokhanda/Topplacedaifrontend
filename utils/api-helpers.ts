@@ -116,7 +116,7 @@ export function buildInterviewConfig(level: string, category: string, duration: 
   const hasCodeEditor = !['hr', 'product-manager'].includes(category);
   
   return {
-    level: level as 'entry' | 'mid' | 'senior' | 'lead',
+    level: level as 'beginner' | 'intermediate' | 'advanced',
     category: category as any,
     duration: parseInt(duration),
     hasCodeEditor,

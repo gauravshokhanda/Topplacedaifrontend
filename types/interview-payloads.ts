@@ -24,7 +24,7 @@ export interface UserProfile {
 }
 
 export interface InterviewConfiguration {
-  level: 'entry' | 'mid' | 'senior' | 'lead';
+  level: 'beginner' | 'intermediate' | 'advanced';
   category: 'hr' | 'product-manager' | 'fullstack' | 'frontend' | 'backend' | 'sql' | 'data-analyst' | 'aws' | 'devops';
   duration: number; // in minutes
   hasCodeEditor: boolean;
@@ -61,7 +61,7 @@ export interface StartInterviewPayload {
     location?: string;
   };
   configuration: {
-    level: 'entry' | 'mid' | 'senior' | 'lead';
+    level: 'beginner' | 'intermediate' | 'advanced';
     category: 'hr' | 'product-manager' | 'fullstack' | 'frontend' | 'backend' | 'sql' | 'data-analyst' | 'aws' | 'devops';
     duration: number;
     hasCodeEditor: boolean;
@@ -416,7 +416,7 @@ export const EXAMPLE_START_INTERVIEW: StartInterviewPayload = {
     location: "San Francisco, CA"
   },
   configuration: {
-    level: "mid",
+    level: "intermediate",
     category: "fullstack",
     duration: 30,
     hasCodeEditor: true,
@@ -451,7 +451,7 @@ export const EXAMPLE_CHAT_CONVERSATION: ChatConversationPayload = {
   user: {
     id: "user_12345",
     name: "John Doe",
-    level: "mid",
+    level: "intermediate",
     category: "fullstack"
   },
   message: {
@@ -481,7 +481,7 @@ export const EXAMPLE_CHAT_CONVERSATION: ChatConversationPayload = {
     timeElapsed: 330, // 5.5 minutes
     timeRemaining: 1470, // 24.5 minutes
     currentTopic: "introduction_and_experience",
-    difficulty: "mid",
+    difficulty: "intermediate",
     expectedResponseType: "explanation"
   },
   userPerformance: {
@@ -515,7 +515,7 @@ export const EXAMPLE_END_INTERVIEW: EndInterviewPayload = {
     role: "user"
   },
   configuration: {
-    level: "mid",
+    level: "intermediate",
     category: "fullstack",
     duration: 30,
     hasCodeEditor: true,
@@ -596,7 +596,7 @@ export const EXAMPLE_INTERVIEW_RESULTS: InterviewResultsPayload = {
   },
   interviewSummary: {
     category: "fullstack",
-    level: "mid",
+    level: "intermediate",
     duration: 30,
     completedAt: "2024-01-20T10:30:00.000Z",
     status: "completed"
@@ -741,7 +741,7 @@ export const EXAMPLE_INTERVIEW_RESULTS: InterviewResultsPayload = {
     ],
     nextInterviewSuggestion: {
       category: "system-design",
-      level: "mid",
+      level: "intermediate",
       estimatedReadiness: "2 weeks"
     }
   }

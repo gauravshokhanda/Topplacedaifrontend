@@ -61,32 +61,25 @@ export default function InterviewSetupPage() {
   });
   const interviewLevels = [
     {
-      id: 'entry',
-      name: 'Entry Level',
+      id: 'beginner',
+      name: 'Beginner Level',
       description: 'For beginners and fresh graduates',
       icon: '🌱',
       difficulty: 'Easy'
     },
     {
-      id: 'mid',
-      name: 'Mid Level',
+      id: 'intermediate',
+      name: 'Intermediate Level',
       description: '2-5 years of experience',
       icon: '🚀',
       difficulty: 'Medium'
     },
     {
-      id: 'senior',
-      name: 'Senior Level',
+      id: 'advanced',
+      name: 'Advanced Level',
       description: '5+ years of experience',
       icon: '⭐',
       difficulty: 'Hard'
-    },
-    {
-      id: 'lead',
-      name: 'Lead/Principal',
-      description: 'Leadership and architecture roles',
-      icon: '👑',
-      difficulty: 'Expert'
     }
   ];
 
