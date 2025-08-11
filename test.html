@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Speech to Text & Text to Speech</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+        background: #f9f9f9;
+      }
+      button {
+        margin: 10px 5px;
+        padding: 10px 20px;
+        font-size: 16px;
+      }
+      textarea,
+      #transcript {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        margin-top: 10px;
+        border: 1px solid #ccc;
+        min-height: 100px;
+        resize: vertical;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🗣️ Voice to Text + Text to Voice</h1>
+
+    <h2>🎙️ Voice to Text</h2>
+    <button onclick="startListening()">Start Listening</button>
+    <button onclick="stopListening()">Stop</button>
+    <div id="transcript"></div>
+
+    <h2>🗨️ Text to Voice</h2>
+    <textarea id="textToSpeak" placeholder="Enter text to speak..."></textarea>
+    <button onclick="speakText()">Speak</button>
+
+    <script>
+      // -------- Voice to Text --------
+      let recognition;
+      function startListening() {
+        const SpeechRecognition =
+          window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          alert("Speech Recognition API not supported in this browser.");
+          return;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = true;
+        recognition.continuous = true;
+
+        recognition.onresult = (event) => {
+          const transcript = Array.from(event.results)
+            .map((result) => result[0].transcript)
+            .join("");
+          document.getElementById("transcript").innerText = transcript;
+        };
+
+        recognition.onerror = (event) => {
+          console.error("Speech recognition error", event.error);
+        };
+
+        recognition.start();
+      }
+
+      function stopListening() {
+        if (recognition) {
+          recognition.stop();
+        }
+      }
+
+      // -------- Text to Voice --------
+      function speakText() {
+        const text = document.getElementById("textToSpeak").value;
+        if (!text) return alert("Please enter some text.");
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "en-US";
+        speechSynthesis.speak(utterance);
+      }
+    </script>
+  </body>
+</html>
