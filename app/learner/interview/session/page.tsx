@@ -50,6 +50,10 @@ function InterviewSessionContent() {
   const duration = searchParams.get('duration');
   const hasCodeEditor = searchParams.get('hasCodeEditor') === 'true';
 
+  // Get the correct language for the category
+  const config = buildInterviewConfig(level || 'mid', category || 'fullstack', duration || '45');
+  const defaultLanguage = config.language;
+
   // State management
   const [isRecording, setIsRecording] = useState(false);
   const [isMicOn, setIsMicOn] = useState(true);
@@ -65,7 +69,7 @@ function InterviewSessionContent() {
   }>>([]);
   const [userInput, setUserInput] = useState('');
   const [code, setCode] = useState('');
-  const [language, setLanguage] = useState('javascript');
+  const [language, setLanguage] = useState(defaultLanguage); // Use the mapped language
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);

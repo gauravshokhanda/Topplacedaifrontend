@@ -375,7 +375,7 @@ export default function LearnerProfilePage() {
         },
         body: JSON.stringify({
           name: profileData.name,
-          phone: profileData.phone.replace(/\s+/g, ''), // Remove all spaces from phone number
+          phone: profileData.phone ? profileData.phone.replace(/\s+/g, '') : '', // Remove all spaces from phone number
           goals: profileData.goals,
           tech_stack: profileData.skills.join(","),
           experience:
@@ -390,7 +390,7 @@ export default function LearnerProfilePage() {
         let profileResponse = await fetch(
           `${API_URL}/users/${user?._id}/profile`,
           {
-            method: "POST",
+            method: "PATCH",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
@@ -420,6 +420,7 @@ export default function LearnerProfilePage() {
                 Authorization: `Bearer ${token}`,
               },
               body: JSON.stringify({
+                user_id: user?._id,
                 name: profileData.name,
                 email: profileData.email,
                 phone: '9034787898', // Remove all spaces from phone number
@@ -452,13 +453,13 @@ export default function LearnerProfilePage() {
   };
 
   // Auto-save (2s debounce)
-  useEffect(() => {
-    if (!hasUnsavedChanges) return;
-    const timeoutId = setTimeout(() => {
-      saveProfileData();
-    }, 2000);
-    return () => clearTimeout(timeoutId);
-  }, [profileData, hasUnsavedChanges]); // eslint-disable-line react-hooks/exhaustive-deps
+  // useEffect(() => {
+  //   if (!hasUnsavedChanges) return;
+  //   const timeoutId = setTimeout(() => {
+  //     saveProfileData();
+  //   }, 2000);
+  //   return () => clearTimeout(timeoutId);
+  // }, [profileData, hasUnsavedChanges]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     try {
@@ -509,7 +510,7 @@ export default function LearnerProfilePage() {
               <div className="container-custom">
                 {/* Header */}
                 <div
-                  className={`mb-8 transition-all duration-700 flex justify-between items-center ${
+                  className={`mb-8 mt-10 transition-all duration-700 flex justify-between items-center ${
                     isVisible
                       ? "opacity-100 translate-y-0"
                       : "opacity-0 translate-y-10"
@@ -527,33 +528,29 @@ export default function LearnerProfilePage() {
                   </div>
 
                   {/* Update Profile Button in Top Right */}
-                  <div className="flex gap-3">
-                    {isEditing ? (
-                      <>
-                        <button
-                          onClick={handleSave}
-                          className="btn-primary px-6 py-3 flex items-center gap-2"
-                        >
-                          <Settings size={18} />
-                          Save Changes
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="btn-outline px-6 py-3"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
+                  {!isEditing ? (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="btn-primary flex items-center gap-2 px-4 py-2"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  ) : (
+                    <div className="flex gap-4">
                       <button
-                        onClick={() => setIsEditing(true)}
-                        className="btn-secondary px-6 py-3 flex items-center gap-2"
+                        onClick={handleSave}
+                        className="btn-primary flex items-center gap-2 px-4 py-2"
                       >
-                        <Pencil className="h-4 w-4" />
-                        Update Profile
+                        <Settings size={16} />
                       </button>
-                    )}
-                  </div>
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="btn-outline flex items-center gap-2 px-4 py-2"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Extracted Data Preview Modal */}
@@ -671,14 +668,7 @@ export default function LearnerProfilePage() {
                               Software Developer
                             </p>
                           </div>
-                          {!isEditing && (
-                            <button
-                              onClick={() => setIsEditing(true)}
-                              className="btn-outline py-2 px-4 text-sm flex items-center gap-2"
-                            >
-                              <Pencil size={16} /> Edit Profile
-                            </button>
-                          )}
+                          {/* Update Profile button removed */}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -783,20 +773,7 @@ export default function LearnerProfilePage() {
                           </div>
                         </div>
 
-                        <div className="flex gap-3 mt-6">
-                          <button
-                            onClick={handleSave}
-                            className="btn-primary px-6 py-2"
-                          >
-                            Save Changes
-                          </button>
-                          <button
-                            onClick={handleCancel}
-                            className="btn-outline px-6 py-2"
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                        {/* Save Changes and Cancel buttons moved to header */}
                       </div>
                     )}
                   </div>
@@ -1199,20 +1176,34 @@ export default function LearnerProfilePage() {
 
                   {/* Career Goals Section */}
                   <div className="glass-card p-6">
-                    <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                      <Target size={24} className="text-[#00FFB2]" />
-                      Career Goals
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-semibold flex items-center gap-2">
+                        <Target size={24} className="text-[#00FFB2]" />
+                        Career Goals
+                      </h3>
+                      {profileData.goals && !isEditing && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="btn-outline py-1 px-3 text-sm flex items-center gap-1"
+                        >
+                          <Pencil size={14} />
+                          Edit Goals
+                        </button>
+                      )}
+                    </div>
                     {isEditing ? (
-                      <textarea
-                        value={profileData.goals}
-                        onChange={(e) =>
-                          handleInputChange("goals", e.target.value)
-                        }
-                        placeholder="Describe your career aspirations and goals..."
-                        rows={4}
-                        className="w-full bg-[#1A1A1A] border border-gray-600 rounded-lg py-3 px-4 text-white placeholder-gray-400 resize-none"
-                      />
+                      <div className="space-y-4">
+                        <textarea
+                          value={profileData.goals}
+                          onChange={(e) =>
+                            handleInputChange("goals", e.target.value)
+                          }
+                          placeholder="Describe your career aspirations and goals..."
+                          rows={4}
+                          className="w-full bg-[#1A1A1A] border border-gray-600 rounded-lg py-3 px-4 text-white placeholder-gray-400 resize-none"
+                        />
+                        {/* Save and Cancel buttons removed - using top header buttons */}
+                      </div>
                     ) : profileData.goals ? (
                       <div className="bg-[#1A1A1A] rounded-lg p-4 border border-gray-600">
                         <p className="text-gray-300 leading-relaxed">
@@ -1228,12 +1219,9 @@ export default function LearnerProfilePage() {
                         <p className="text-gray-400 mb-4">
                           No career goals set yet
                         </p>
-                        <button
-                          onClick={() => setIsEditing(true)}
-                          className="btn-outline"
-                        >
-                          Add Career Goals
-                        </button>
+                        <p className="text-gray-500 text-sm">
+                          Click the edit button above to add career goals
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1247,19 +1235,24 @@ export default function LearnerProfilePage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="bg-[#1A1A1A] p-4 rounded-lg text-center">
                         <div className="text-[#00FFB2] text-2xl font-bold">
-                          {Math.round(
-                            (((profileData.name ? 1 : 0) +
-                              (profileData.phone ? 1 : 0) +
-                              (profileData.location ? 1 : 0) +
-                              (profileData.linkedinProfile ? 1 : 0) +
-                              (profileData.goals ? 1 : 0) +
-                              (profileData.skills.length > 0 ? 1 : 0) +
-                              (profileData.experience.length > 0 ? 1 : 0) +
-                              (profileData.education.length > 0 ? 1 : 0) +
-                              (uploadedResume ? 1 : 0)) /
-                              9) *
-                              100
-                          )}
+                          {(() => {
+                            const fields = [
+                              profileData.name,
+                              profileData.email,
+                              profileData.phone,
+                              profileData.location,
+                              profileData.linkedinProfile,
+                              profileData.goals,
+                              profileData.skills.length > 0,
+                              profileData.experience.length > 0,
+                              profileData.education.length > 0,
+                              uploadedResume
+                            ];
+                            const completedFields = fields.filter(field => 
+                              field && (typeof field === 'boolean' ? field : field.toString().trim() !== '')
+                            ).length;
+                            return Math.round((completedFields / fields.length) * 100);
+                          })()}
                           %
                         </div>
                         <div className="text-sm text-gray-400">
