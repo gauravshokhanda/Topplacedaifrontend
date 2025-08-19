@@ -32,7 +32,7 @@ import AIAvatar from "@/components/AIAvatar";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { io, Socket } from "socket.io-client";
-import { buildInterviewConfig } from '@/utils/api-helpers';
+import { buildInterviewConfig, updateInterviewProgress } from '@/utils/api-helpers';
 
 // Your backend URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
